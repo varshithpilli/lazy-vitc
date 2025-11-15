@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Captcha Solver",
+  "version": "1.0",
+
+  "permissions": ["scripting", "activeTab"],
+
+  "web_accessible_resources": [
+    {
+      "resources": ["weights.json"],
+      "matches": ["*://vtopcc.vit.ac.in/*", "*://vtopregcc.vit.ac.in/*"]
+    }
+  ],
+  
+  "content_scripts": [
+    {
+      "matches": ["*://vtopcc.vit.ac.in/*", "*://vtopregcc.vit.ac.in/*"],
+      "js": ["contentScript.js"]
+    }
+  ]
+}
