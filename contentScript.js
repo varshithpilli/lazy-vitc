@@ -175,9 +175,17 @@ const solveChennai = (img, textBox) => {
         out += label_txt[block];
       }
       console.log(out);
-      textBox.value = out;
+      textBox.value = out.strip();
       var box = document.getElementsByClassName("row")[1];
-      addCredits(box);
+      const strings = [
+        "Filled by yours truly",
+        "Thank me later",
+        "Too lazy for this",
+        "I am a robot",
+        "Here.. let me",
+        "Was I faster than auto-complete?",
+      ]
+      addCredits(box, strings[Math.floor(Math.random() * strings.length)]);
     });
 };
 
