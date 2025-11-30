@@ -1,4 +1,4 @@
-let inject_nav = () => {
+let nav = () => {
   if (!document.URL.includes("vtopcc.vit.ac.in")) return;
   if (document.getElementById("viboot-navbar")) return;
 
@@ -42,7 +42,7 @@ let inject_nav = () => {
 const initializeNavbar = () => {
   const navbar = document.querySelector(".navbar");
   if (navbar) {
-    inject_nav();
+    nav();
   } else {
     console.log('Navbar not found, retrying...');
     setTimeout(initializeNavbar, 1000);

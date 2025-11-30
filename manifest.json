@@ -31,9 +31,7 @@
         "login/captcha.js",
         "navigation/attendance.js",
         "navigation/marks.js",
-        "navigation/timetable.js",
-        "navigation/exam_schedule.js",
-        "navigation/injected_nav.js",
+        "navigation/nav.js",
         "navigation/detector.js"
       ]
     }

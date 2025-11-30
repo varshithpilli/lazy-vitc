@@ -1,148 +1,106 @@
 let modify_marks_page = () => {
-    let other = false, colspan = 8;
-    let tables = document.querySelectorAll(".customTable-level1 > tbody"); // select all Tables
-    let subject_header = Array.from(document.querySelectorAll(".tableContent"));
-    let i = 0;
-    for (let j = 0; j < tables.length; j++) {
-        // To get the subject code
-        let sub_header_row = subject_header[i].getElementsByTagName("td");
-        let sub_type = sub_header_row[4].innerHTML;
-        i += 2;
-        let tot_max_marks = 0,
-            tot_weightage_percent = 0,
-            tot_scored = 0,
-            tot_weightage_equi = 0,
-            tot_class_avg = 0;
-
-        table_marks = tables[j].querySelectorAll(".tableContent-level1"); // select rows excluding header
-        table_marks = Array.from(table_marks);
-
-        for (let k = 0; k < table_marks.length; k++) {
-            if (table_marks[k].style.background != '') {
-                other = true;
-                colspan = 11;
-                continue;
-            }
-
-            let content = table_marks[k].innerHTML.split("<td>");
-
-            //Removing the tabs and other tags
-            let max_marks = content[3].replace(/[^0-9.]+/g, "");
-            let weightage_percent = content[4].replace(/[^0-9.]+/g, "");
-            let scored = content[6].replace(/[^0-9.]+/g, "");
-            let weightage_equi = content[7].replace(/[^0-9.]+/g, "");
-            let class_avg = content[8].replace(/[^0-9.]+/g, "");
-
-            //converting string to float
-            tot_max_marks += parseFloat(max_marks);
-            tot_weightage_percent += parseFloat(weightage_percent);
-            tot_scored += parseFloat(scored);
-            tot_weightage_equi += parseFloat(weightage_equi);
-            tot_class_avg += parseFloat(class_avg);
-        };
-
-        //Add the row to display totals
-        if (!other) {
-            tables[j].innerHTML += `
-        <tr class="tableContent-level1" style='background: rgb(60,141,188,0.8);'>
-            <td></td>
-            <td><b>Total:</b></td>
-            <td>${tot_max_marks.toFixed(2)}</td>
-            <td>${tot_weightage_percent.toFixed(2)}</td>
-            <td></td>
-            <td><b>${tot_scored.toFixed(2)}</b></td>
-            <td><b>${tot_weightage_equi.toFixed(2)}</b></td>
-            <td><b>Lost Weightage Marks: ${(tot_weightage_percent.toFixed(2) - tot_weightage_equi.toFixed(2)).toFixed(2)}</b></td>
-        </tr>
-        `;
-        } else {
-            tables[j].innerHTML += `
-        <tr class="tableContent-level1" style='background: rgb(60,141,188,0.8);'>
-            <td></td>
-            <td><b>Total:</b></td>
-            <td>${tot_max_marks.toFixed(2)}</td>
-            <td>${tot_weightage_percent.toFixed(2)}</td>
-            <td></td>
-            <td><b>${tot_scored.toFixed(2)}</b></td>
-            <td><b>${tot_weightage_equi.toFixed(2)}</b></td>
-            <td>${tot_class_avg.toFixed(2)}</td>
-            <td> </td>
-            <td><b>Lost Weightage Marks:</b></td>
-            <td>${(tot_weightage_percent.toFixed(2) - tot_weightage_equi.toFixed(2)).toFixed(2)}</td>
-        </tr>
-        `;
-        }
-
-        //FAT passing marks
-        let pass_marks;
-
-        //Theory Subjects
-        if (sub_type.includes("Theory") && tot_weightage_percent == 60) {
-            if (tot_weightage_equi >= 34) {
-                pass_marks = 40;
-                tables[j].innerHTML += `
-                <tr class="tableContent-level1" style='background: rgb(170, 255, 0,0.6);'>
-                    <td colspan="${colspan}" style="text-align:center">You need only ${pass_marks} marks out of 100 in FAT to pass theory component 🥳</td>
-                </tr>
-                `;
-            }
-            else {
-                pass_marks = ((34 - tot_weightage_equi) * 2.5) + 40;
-                tables[j].innerHTML += `
-                <tr class="tableContent-level1" style='background: rgb(255,0,0,0.6);'>
-                    <td colspan="${colspan}" style="text-align:center"><b>Minimum marks required to clear this component is : ${pass_marks.toFixed(2)} in FAT<b></td>
-                </tr>
-                `;
-            }
-        }
-
-        //Labs
-        else if ((sub_type.includes("Lab") || sub_type.includes("Online")) && tot_weightage_percent == 60) {
-            if (tot_weightage_equi >= 50) {
-                pass_marks = "You have fulfilled the criteria of passing the Lab Component 🥳";
-                tables[j].innerHTML += `
-                <tr class="tableContent-level1" style='background: rgb(170, 255, 0,0.6);'>
-                    <td colspan="${colspan}" style="text-align:center">${pass_marks}</td>
-                </tr>
-                `;
-            }
-            else {
-                pass_marks = 50 - tot_weightage_equi;
-                tables[j].innerHTML += `
-                <tr class="tableContent-level1" style='background: rgb(255,0,0,0.6);'>
-                    <td colspan="${colspan}" style="text-align:center"><b>Minimum marks required to clear this component is : ${pass_marks.toFixed(2)} in FAT<b></td>
-                </tr>
-                `;
-            }
-        }
-
-        //STS
-        else if (sub_type.includes("Soft") && tot_weightage_percent == 60) {
-            if (tot_weightage_equi >= 50) {
-                pass_marks = "You have fulfilled the criteria of passing the STS 🥳";
-                tables[j].innerHTML += `
-                <tr class="tableContent-level1" style='background: rgb(170, 255, 0,0.6);'>
-                    <td colspan="${colspan}" style="text-align:center">${pass_marks}</td>
-                </tr>
-                `;
-            }
-            else {
-                pass_marks = 50 - tot_weightage_equi;
-                tables[j].innerHTML += `
-                <tr class="tableContent-level1" style='background: rgb(255,0,0,0.6);'>
-                    <td colspan="${colspan}" style="text-align:center"><b>Minimum marks required to clear STS is : ${pass_marks.toFixed(2)} marks<b></td>
-                </tr>
-                `;
-            }
-        }
-    };
-};
-chrome.runtime.onMessage.addListener((request) => {
-    if (request.message === "mark_view_page") {
-        try {
-            modify_marks_page();
-        } catch (error) {
-            // console.log(error);
-        }
+    // 1) Hide columns in the blue header (outer table)
+    const blue_header = document.querySelector(".tableHeader");
+    if (blue_header) {
+        const blue_header_elements = Array.from(blue_header.querySelectorAll("td"));
+        // Sl.No. (1), ClassNbr (2), Course System (6), Course Mode (9)
+        [0, 1, 5, 8].forEach(idx => {
+            if (blue_header_elements[idx]) blue_header_elements[idx].style.display = "none";
+        });
     }
-});
+
+    // 2) Hide corresponding columns in outer content rows
+    const all_outer_rows = Array.from(document.querySelectorAll(".tableContent"));
+    all_outer_rows.forEach(row => {
+        const cells = Array.from(row.querySelectorAll(":scope > td"));
+        // Ignore rows that are the wrapper for inner tables (they have colspan)
+        if (cells.length && cells[0].hasAttribute("colspan")) return;
+        [0, 1, 5, 8].forEach(idx => {
+            if (cells[idx]) cells[idx].style.display = "none";
+        });
+    });
+
+    // 3) Process each inner marks table (customTable-level1)
+    const useful_tables = Array.from(document.querySelectorAll(".customTable-level1 > tbody"));
+
+    useful_tables.forEach(tbody => {
+        // Hide columns in inner header
+        const header = tbody.querySelector(".tableHeader-level1");
+        if (header) {
+            const hdrCells = Array.from(header.querySelectorAll("td"));
+            // Sl.No.(1), Status(5), Class Avg(8), Mark Posted Strength(9), Remark(10)
+            [0, 4, 7, 8, 9].forEach(idx => {
+                if (hdrCells[idx]) hdrCells[idx].style.display = "none";
+            });
+        }
+
+        // Totals
+        let tot_max_marks = 0;
+        let tot_weightage_percent = 0;
+        let tot_scored = 0;
+        let tot_weightage_equi = 0;
+
+        // Hide columns and accumulate totals in inner content rows
+        const rows = Array.from(tbody.querySelectorAll(".tableContent-level1"));
+        rows.forEach(row => {
+            // Skip if this is already a totals row (has background set)
+            if (row.style.background && row.style.background !== "") return;
+
+            const cells = Array.from(row.querySelectorAll("td, output"));
+
+            // Hide columns: Sl.No.(1), Status(5), Class Avg(8), Mark Posted Strength(9), Remark(10)
+            // Note: inner rows are <td><output> combos; the nth-child mapping still aligns by cell position.
+            [0, 4, 7, 8, 9].forEach(idx => {
+                const td = row.querySelector(`td:nth-child(${idx + 1})`);
+                if (td) td.style.display = "none";
+            });
+
+
+            // Extract numeric values by position:
+            // Indexes based on the header you shared:
+            // 0: Sl.No., 1: Mark Title, 2: Max. Mark, 3: Weightage %, 4: Status, 5: Scored Mark,
+            // 6: Weightage Mark, 7: Class Average, 8: Mark Posted Strength, 9: Remark
+
+
+            const getNum = (el) => {
+                const txt = (el?.textContent || "").replace(/[^0-9.]+/g, "");
+                return txt ? parseFloat(txt) : 0;
+            };
+
+            console.log("t mark: " + getNum(cells[4]));
+            console.log("t wei: " + getNum(cells[6]));
+            console.log("a mark: " + getNum(cells[10]));
+            console.log("a wei: " + getNum(cells[12]));
+
+            const maxMarks = getNum(cells[4]);
+            const weightagePercent = getNum(cells[6]);
+
+            const scoredMark = getNum(cells[10]);
+            const weightageEqui = getNum(cells[12]);
+
+            tot_max_marks += maxMarks;
+            tot_weightage_percent += weightagePercent;
+            tot_scored += scoredMark;
+            tot_weightage_equi += weightageEqui;
+        });
+
+        // Append totals row (matching inner table structure; hidden columns included for alignment)
+        const totalsRow = document.createElement("tr");
+        totalsRow.className = "tableContent-level1";
+        totalsRow.style.background = "rgba(60,141,188,0.8)";
+        totalsRow.innerHTML = `
+      <td style="display:none;"></td>
+      <td><b>Total:</b></td>
+      <td><b></b></td>
+      <td><b>${tot_weightage_percent.toFixed(2)}</b></td>
+      <td style="display:none;"></td>
+      <td style="display:none;"></td>
+      <td><b></b></td>
+      <td><b>${tot_weightage_equi.toFixed(2)}</b></td>
+      <td style="display:none;"></td>
+      <td style="display:none;"></td>
+      <td style="display:none;"></td>
+    `;
+        tbody.appendChild(totalsRow);
+    });
+};

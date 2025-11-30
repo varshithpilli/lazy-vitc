@@ -1,46 +1,22 @@
 let view_attendance_page = () => {
-	if (document.location.href.includes("vtopcc")) {
-		let table_line = document.querySelectorAll(".table-responsive")[0];
-		table_line.getElementsByTagName("span")[0].outerHTML +=
-			"<br><br><p id='attendance' style='color:#32750e;background:#f7f710;width:1000px;font-size:1.25rem'><b>*Note: This calculator doesn't calculate the attendance till the end of the sem, It only calculates the attendance to 74.01%</b></p>";
-
-		//Footer edited_head
-		let color_detail = document.createElement("div");
-		color_detail.innerHTML = `
-            <p style='color:RGB(34 144 62);'>*Attendance Greater than 75%</p>
-            <p style='color:rgb(255, 171, 16);margin-top:-10px;'>*Be Cautious your Attendance is in between 74.01% to 74.99%</p>
-            <p style='color:rgb(238, 75, 43); margin-top:-10px'>*Attendance Less than 75%</p>
-            `;
-		table_line.insertAdjacentElement("afterend", color_detail);
-	} else {
-		let table_line = document.getElementById("AttendanceDetailDataTable")
-			.parentElement.parentElement;
-
-		let divCaution = document.createElement("div");
-		divCaution.innerHTML =
-			"<p id='attendance' style='color:#32750e;background:#f7f710;width:950px;font-size:1.25rem'><b>*Note: This calculator doesn't calculate the attendance till the exam date, It only calculates the attendance to 74.01%</b></p>";
-		table_line.insertAdjacentElement("beforebegin", divCaution);
-
-		//Footer edited_head
-		let color_detail = document.createElement("div");
-		color_detail.innerHTML = `
-		    <p style='color:RGB(34 144 62);'>*Attendance Greater than 75%</p>
-		    <p style='color:rgb(255, 171, 16);margin-top:-10px;'>*Be Cautious your Attendance is in between 74.01% to 74.99%</p>
-		    <p style='color:rgb(238, 75, 43); margin-top:-10px'>*Attendance Less than 75%</p>
-		    `;
-		table_line.insertAdjacentElement("beforeend", color_detail);
-	}
 	//Head edit
-	let table_head =
-		document.getElementsByTagName("thead")[0].children[0].children;
+	let table_head = document.getElementsByTagName("thead")[0].children[0].children;
 	let attendance_calc = table_head[0].cloneNode(true);
 	attendance_calc.innerText = "75% Attendance Alert";
-	table_head[7].insertAdjacentElement("afterend", attendance_calc);
-
+	table_head[11].insertAdjacentElement("afterend", attendance_calc);
+	table_head[0].style.display = "none";
+	table_head[13].style.display = "none";
+	table_head[6].style.display = "none";
+	
 	//Body Edit
 	let body = document.getElementsByTagName("tbody");
 	let body_row = body[0].querySelectorAll("tr");
 	body_row.forEach((row) => {
+		row.children[0].style.display = "none";
+		row.children[6].style.display = "none";
+		row.children[12].style.display = "none";
+
+
 		let new_Table_Content = row.innerHTML.split("\n");
 		if (row.childNodes.length > 3) {
 			let attended_classes, tot_classes, course_type;
@@ -72,14 +48,14 @@ let view_attendance_page = () => {
 					new_Table_Content.splice(
 						new_table_content_splice,
 						0,
-						`<td style="vertical-align: middle; border: 1px solid #b2b2b2; padding: 5px; background: rgb(238, 75, 43,0.7);"><p style="margin: 0px;">${req_classes} lab(s) should be attended</p></td>`
+						`<td style="vertical-align: middle; border: 1px solid #b2b2b2; padding: 5px; background: rgb(238, 75, 43,0.7);"><p style="margin: 0px;">-${req_classes}</p></td>`
 					);
 					row.innerHTML = new_Table_Content.join("");
 				} else {
 					new_Table_Content.splice(
 						new_table_content_splice,
 						0,
-						`<td style="vertical-align: middle; border: 1px solid #b2b2b2; padding: 5px; background: rgb(238, 75, 43,0.7);"><p style="margin: 0px;">${req_classes} class(es) should be attended</p></td>`
+						`<td style="vertical-align: middle; border: 1px solid #b2b2b2; padding: 5px; background: rgb(238, 75, 43,0.7);"><p style="margin: 0px;">-${req_classes}</p></td>`
 					);
 					row.innerHTML = new_Table_Content.join("");
 				}
@@ -109,7 +85,7 @@ let view_attendance_page = () => {
 					new_Table_Content.splice(
 						new_table_content_splice,
 						0,
-						`<td style="vertical-align: middle; border: 1px solid #b2b2b2; padding: 5px; background: ${color};"><p style="margin: 0px;">Only ${bunk_classes} lab(s) can be Skipped <br>be Cautious</p></td>`
+						`<td style="vertical-align: middle; border: 1px solid #b2b2b2; padding: 5px; background: ${color};"><p style="margin: 0px;">+${bunk_classes}</p></td>`
 					);
 					row.innerHTML = new_Table_Content.join("");
 				} else {
@@ -119,7 +95,7 @@ let view_attendance_page = () => {
 					new_Table_Content.splice(
 						new_table_content_splice,
 						0,
-						`<td style="vertical-align: middle; border: 1px solid #b2b2b2; padding: 5px; background: ${color};"><p style="margin: 0px;">Only ${bunk_classes} class(es) can be Skipped <br>be Cautious</p></td>`
+						`<td style="vertical-align: middle; border: 1px solid #b2b2b2; padding: 5px; background: ${color};"><p style="margin: 0px;">+${bunk_classes}</p></td>`
 					);
 					row.innerHTML = new_Table_Content.join("");
 				}
@@ -127,15 +103,3 @@ let view_attendance_page = () => {
 		}
 	});
 };
-// chrome.runtime.onMessage.addListener((request) => {
-// 	if (
-// 		request.message === "view_attendance" &&
-// 		!document.getElementById("attendance")
-// 	) {
-// 		try {
-// 			view_attendance_page();
-// 		} catch (error) {
-// 			// console.log(error);
-// 		}
-// 	}
-// });
