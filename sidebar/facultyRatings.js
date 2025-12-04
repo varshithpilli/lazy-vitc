@@ -1,4 +1,10 @@
 let facultyRatingsData = [];
+let filteredData = [];
+let searchQuery = '';
+
+// Initialize sort options
+window.sortAttribute = 'overall';
+window.sortOrder = 'desc';
 
 function getRatingColor(rating) {
   if (rating >= 9.0) return '#4CAF50';
@@ -21,18 +27,93 @@ function createRatingBar(rating) {
   return container;
 }
 
+function filterAndSortData() {
+  // Filter by search query
+  filteredData = facultyRatingsData.filter(faculty => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return faculty.name.toLowerCase().includes(query) || 
+           faculty.faculty_id.toLowerCase().includes(query);
+  });
+  
+  // Sort data
+  filteredData.sort((a, b) => {
+    let valA, valB;
+    
+    if (window.sortAttribute === 'overall' || !window.sortAttribute) {
+      valA = a.overall_rating;
+      valB = b.overall_rating;
+    } else if (window.sortAttribute === 'teaching') {
+      valA = a.teaching;
+      valB = b.teaching;
+    } else if (window.sortAttribute === 'attendance') {
+      valA = a.attendance_flex;
+      valB = b.attendance_flex;
+    } else if (window.sortAttribute === 'supportiveness') {
+      valA = a.supportiveness;
+      valB = b.supportiveness;
+    } else if (window.sortAttribute === 'marks') {
+      valA = a.marks;
+      valB = b.marks;
+    } else if (window.sortAttribute === 'total_ratings') {
+      valA = a.total_ratings;
+      valB = b.total_ratings;
+    } else if (window.sortAttribute === 'name') {
+      valA = a.name.toLowerCase();
+      valB = b.name.toLowerCase();
+      if (window.sortOrder === 'asc') {
+        return valA.localeCompare(valB);
+      } else {
+        return valB.localeCompare(valA);
+      }
+    }
+    
+    if (window.sortOrder === 'asc') {
+      return valA - valB;
+    } else {
+      return valB - valA;
+    }
+  });
+}
+
 function displayRatings() {
   const list = document.getElementById('ratingsList');
+  const searchSection = document.getElementById('searchSection');
+  const sortSection = document.getElementById('sortSection');
+  const importSection = document.getElementById('importSection');
+  const facultyCountSection = document.getElementById('facultyCountSection');
+  const facultyCountEl = document.getElementById('facultyCount');
   
   if (!facultyRatingsData.length) {
     list.innerHTML = '<div class="card" style="padding: 20px; border-radius: 6px; text-align: center;"><div style="font-size: 13px; opacity: 0.7;">No ratings imported yet.</div></div>';
+    if (searchSection) searchSection.style.display = 'none';
+    if (sortSection) sortSection.style.display = 'none';
+    if (importSection && facultyCountSection) {
+      importSection.style.display = 'block';
+      facultyCountSection.style.display = 'none';
+    }
     return;
   }
   
-  const sorted = [...facultyRatingsData].sort((a, b) => b.overall_rating - a.overall_rating);
+  // Show search and sort sections when data is loaded
+  if (searchSection) searchSection.style.display = 'block';
+  if (sortSection) sortSection.style.display = 'block';
+  if (importSection && facultyCountSection && facultyCountEl) {
+    importSection.style.display = 'none';
+    facultyCountSection.style.display = 'block';
+    facultyCountEl.textContent = facultyRatingsData.length;
+  }
+  
+  filterAndSortData();
+  
+  if (!filteredData.length) {
+    list.innerHTML = '<div class="card" style="padding: 20px; border-radius: 6px; text-align: center;"><div style="font-size: 13px; opacity: 0.7;">No results found.</div></div>';
+    return;
+  }
+  
   list.innerHTML = '';
   
-  sorted.forEach(faculty => {
+  filteredData.forEach(faculty => {
     const item = document.createElement('div');
     item.className = 'card';
     item.style.cssText = 'padding: 14px; border-radius: 6px; margin-bottom: 10px;';
@@ -163,9 +244,40 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.storage.local.set({ theme: newTheme });
   });
 
+  // Search functionality
+  const searchInput = document.getElementById('searchInput');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      searchQuery = e.target.value;
+      displayRatings();
+    });
+  }
+  
+  // Sort functionality
+  const sortAttribute = document.getElementById('sortAttribute');
+  const sortOrderSelect = document.getElementById('sortOrder');
+  
+  if (sortAttribute) {
+    sortAttribute.addEventListener('change', (e) => {
+      window.sortAttribute = e.target.value;
+      displayRatings();
+    });
+  }
+  
+  if (sortOrderSelect) {
+    sortOrderSelect.addEventListener('change', (e) => {
+      window.sortOrder = e.target.value;
+      displayRatings();
+    });
+  }
+
   loadRatings();
   
   document.getElementById('importBtn').addEventListener('click', () => {
+    document.getElementById('fileInput').click();
+  });
+  
+  document.getElementById('importAgainBtn')?.addEventListener('click', () => {
     document.getElementById('fileInput').click();
   });
   

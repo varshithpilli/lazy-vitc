@@ -194,6 +194,61 @@
     body.dark-mode .color-input {
       border-color: #404040;
     }
+
+    .keyword-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      border: 1px solid;
+    }
+
+    body.light-mode .keyword-tag {
+      background-color: #f3f4f6;
+      border-color: #e5e7eb;
+      color: #1a1a1a;
+    }
+
+    body.dark-mode .keyword-tag {
+      background-color: #383838;
+      border-color: #505050;
+      color: #e5e5e5;
+    }
+
+    .keyword-remove {
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-size: 18px;
+      line-height: 1;
+      padding: 0;
+      width: 18px;
+      height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 3px;
+    }
+
+    body.light-mode .keyword-remove {
+      color: #666;
+    }
+
+    body.dark-mode .keyword-remove {
+      color: #999;
+    }
+
+    body.light-mode .keyword-remove:hover {
+      background-color: #e5e7eb;
+      color: #dc3545;
+    }
+
+    body.dark-mode .keyword-remove:hover {
+      background-color: #505050;
+      color: #ff6b6b;
+    }
   </style>
 </head>
 <body class="light-mode">
@@ -233,13 +288,27 @@
       <!-- Import Section -->
       <div style="margin-bottom: 16px;">
         <input type="file" id="fileInput" accept=".json" style="display: none;">
-        <button id="importBtn" class="import-btn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M8 5H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-4"/>
-          </svg>
-          Import Faculty Ratings JSON
-        </button>
-        <p style="font-size: 11px; opacity: 0.6; text-align: center; margin-top: 6px;">Select a JSON file with faculty ratings</p>
+        <div id="importSection">
+          <button id="importBtn" class="import-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M8 5H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-4"/>
+            </svg>
+            Import Faculty Ratings JSON
+          </button>
+          <p style="font-size: 11px; opacity: 0.6; text-align: center; margin-top: 6px;">Select a JSON file with faculty ratings</p>
+        </div>
+        <div id="facultyCountSection" style="display: none;">
+          <div class="card" style="padding: 12px; border-radius: 6px; margin-bottom: 8px;">
+            <div style="text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 4px;" id="facultyCount"></div>
+            <div style="text-align: center; font-size: 11px; opacity: 0.6;">Faculty Imported</div>
+          </div>
+          <button id="importAgainBtn" class="import-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M8 5H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-4"/>
+            </svg>
+            Import Again
+          </button>
+        </div>
       </div>
 
       <!-- Authentication Section -->
@@ -284,7 +353,7 @@
         
         <button class="add-btn" id="addKeywordBtn">Add Keyword</button>
         
-        <div id="keywordList" style="margin-top: 12px; display: flex; flex-wrap: gap; gap: 6px;"></div>
+        <div id="keywordsContainer" style="margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px;"></div>
       </div>
 
       <!-- View Slot Page Settings -->

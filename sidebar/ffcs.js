@@ -440,6 +440,10 @@
             document.getElementById('fileInput').click();
         });
 
+        document.getElementById('importAgainBtn')?.addEventListener('click', () => {
+            document.getElementById('fileInput').click();
+        });
+
         document.getElementById('fileInput')?.addEventListener('change', e => {
             if (e.target.files.length) importFile(e.target.files[0]);
         });
@@ -607,12 +611,31 @@
 
     function updateStats() {
         const statsBox = document.getElementById('statsBox');
-        if (statsBox) {
-            if (facultyRatings.length > 0) {
+        const importSection = document.getElementById('importSection');
+        const facultyCountSection = document.getElementById('facultyCountSection');
+        const facultyCountEl = document.getElementById('facultyCount');
+        
+        if (facultyRatings.length > 0) {
+            // Show faculty count section, hide import section
+            if (importSection && facultyCountSection && facultyCountEl) {
+                importSection.style.display = 'none';
+                facultyCountSection.style.display = 'block';
+                facultyCountEl.textContent = facultyRatings.length;
+            }
+            
+            if (statsBox) {
                 const avg = (facultyRatings.reduce((sum, f) => sum + f.overall_rating, 0) / facultyRatings.length).toFixed(1);
                 statsBox.innerHTML = `<strong>${facultyRatings.length}</strong> faculty loaded | Avg: <strong>${avg}</strong>`;
                 statsBox.style.display = 'block';
-            } else {
+            }
+        } else {
+            // Show import section, hide faculty count section
+            if (importSection && facultyCountSection) {
+                importSection.style.display = 'block';
+                facultyCountSection.style.display = 'none';
+            }
+            
+            if (statsBox) {
                 statsBox.style.display = 'none';
             }
         }
