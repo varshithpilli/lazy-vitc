@@ -19,7 +19,7 @@ const loginAttempts = {
   lms: false
 };
 
-const fillCredentials = (usernameSelector, passwordSelector, submitSelector, storageKey, attemptKey) => {
+const fillCredentials = (usernameSelector, passwordSelector, storageKey, attemptKey, hasCaptcha) => {
   if (loginAttempts[attemptKey]) return;
   
   chrome.storage.local.get(storageKey, r => {
@@ -35,18 +35,20 @@ const fillCredentials = (usernameSelector, passwordSelector, submitSelector, sto
       usernameField.value = d.username || "";
       passwordField.value = d.password || "";
       
-      ["input", "change"].forEach(e => {
+      ["input", "change", "keyup"].forEach(e => {
         usernameField.dispatchEvent(new Event(e, { bubbles: true }));
         passwordField.dispatchEvent(new Event(e, { bubbles: true }));
       });
       
       loginAttempts[attemptKey] = true;
       
-      const hasCaptchaBlock = !!document.getElementById("captchaBlock");
-      const hasCaptchaId = !!document.getElementById("captcha_id");
-      
-      if ((hasCaptchaBlock || hasCaptchaId) && d.fillCaptcha) {
+      if (hasCaptcha && d.fillCaptcha) {
         document.dispatchEvent(new CustomEvent("fillCaptcha", { detail: { autoSubmit: d.autoSubmit } }));
+      } else if (d.autoSubmit && !hasCaptcha) {
+        setTimeout(() => {
+          const submitBtn = q("#loginbtn");
+          if (submitBtn) submitBtn.click();
+        }, 500);
       }
     });
   });
@@ -66,16 +68,16 @@ const handleVtopLogin = () => {
       }
     });
   } else if (currentUrl.includes("/vtop/")) {
-    fillCredentials("#username", "#password", "#submitBtn", "vtopCreds", "vtop");
+    fillCredentials("#username", "#password", "vtopCreds", "vtop", true);
   }
 };
 
 const handleFFCSLogin = () => {
-  fillCredentials("#username", "#password", "#submitBtn", "ffcsCreds", "ffcs");
+  fillCredentials("#username", "#password", "ffcsCreds", "ffcs", true);
 };
 
 const handleLMSLogin = () => {
-  fillCredentials("#username", "#password", "#loginbtn", "lmsCreds", "lms");
+  fillCredentials("#username", "#password", "lmsCreds", "lms", false);
 };
 
 const tryAutoLogin = () => {

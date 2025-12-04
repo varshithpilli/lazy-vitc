@@ -35,7 +35,6 @@ const solveChennai = (img, textBox, callback) => {
 };
 
 const tryUrls = () => {
-  console.log(document.URL);
   let autoSubmitRequested = false;
   
   document.addEventListener('fillCaptcha', (e) => {
@@ -51,7 +50,7 @@ const tryUrls = () => {
   
   if (document.URL.match("vtopcc.vit.ac.in")) {
     handleVtopCaptcha(false);
-  } else if (document.URL.match("https://vtopregcc.vit.ac.in/RegistrationNew/")) {
+  } else if (document.URL.match("vtopregcc.vit.ac.in")) {
     handleFFCSCaptcha(false);
   }
 }
@@ -63,15 +62,11 @@ function handleVtopCaptcha(autoSubmit) {
   }
   let textBox = document.getElementById("captchaStr");
   
-  if (!img || !textBox) {
-    console.log("No captcha found on this page");
-    return;
-  }
+  if (!img || !textBox) return;
   
   img.style.height = "40px";
   img.style.width = "200px";
   solveChennai(img, textBox, () => {
-    // Dispatch events to ensure the captcha value is registered
     textBox.dispatchEvent(new Event('input', { bubbles: true }));
     textBox.dispatchEvent(new Event('change', { bubbles: true }));
     
@@ -84,10 +79,7 @@ function handleVtopCaptcha(autoSubmit) {
   });
   
   let container = document.getElementById("captchaBlock");
-  if (!container) {
-    console.log("No captcha container found");
-    return;
-  }
+  if (!container) return;
   
   container.addEventListener('DOMSubtreeModified', () => {
     img = document.getElementById("captchaBlock")?.children[0];
@@ -101,7 +93,6 @@ function handleVtopCaptcha(autoSubmit) {
     let textBox = document.getElementById("captchaStr");
     if (textBox) {
       solveChennai(img, textBox, () => {
-        // Dispatch events to ensure the captcha value is registered
         textBox.dispatchEvent(new Event('input', { bubbles: true }));
         textBox.dispatchEvent(new Event('change', { bubbles: true }));
       });
@@ -111,8 +102,6 @@ function handleVtopCaptcha(autoSubmit) {
 
 function handleFFCSCaptcha(autoSubmit) {
   if (document.getElementById("captchaStringProgInfo")) {
-    console.log("Step 2 CAPTCHA detected");
-    
     const solveCaptchaStep2 = () => {
       let img = document.getElementById("captcha_id");
       let textBox = document.getElementById("captchaStringProgInfo");
@@ -121,18 +110,17 @@ function handleFFCSCaptcha(autoSubmit) {
         img.style.height = "40px";
         img.style.width = "200px";
         solveChennai(img, textBox, () => {
-          // Dispatch events to ensure the captcha value is registered
           textBox.dispatchEvent(new Event('input', { bubbles: true }));
           textBox.dispatchEvent(new Event('change', { bubbles: true }));
+          textBox.dispatchEvent(new Event('keyup', { bubbles: true }));
           
           if (autoSubmit) {
             setTimeout(() => {
-              const submitBtn = document.querySelector('button[type="submit"]');
-              if (submitBtn) submitBtn.click();
+              const form = document.querySelector('form');
+              if (form) form.submit();
             }, 500);
           }
         });
-        console.log("Step 2 CAPTCHA solved");
       }
     };
     
@@ -141,8 +129,7 @@ function handleFFCSCaptcha(autoSubmit) {
     const testDiv = document.getElementById("test");
     if (testDiv) {
       const observer = new MutationObserver(() => {
-        console.log("CAPTCHA refreshed, solving again...");
-        solveCaptchaStep2();
+        setTimeout(solveCaptchaStep2, 100);
       });
       observer.observe(testDiv, { 
         childList: true, 
@@ -150,42 +137,63 @@ function handleFFCSCaptcha(autoSubmit) {
         attributes: true,
         attributeFilter: ['src'] 
       });
-      console.log("Observer set up for Step 2 CAPTCHA");
     }
     
     const refreshButton = document.getElementById("refreshCaptchaProcess");
     if (refreshButton) {
       refreshButton.addEventListener('click', () => {
-        console.log("Refresh button clicked");
         setTimeout(solveCaptchaStep2, 500);
       });
     }
   } else if (document.getElementById("captchaString")) {
-    console.log("Step 1 CAPTCHA detected");
-    let img = document.getElementById("captcha_id");
-    let textBox = document.getElementById("captchaString");
+    const solveCaptchaStep1 = () => {
+      let img = document.getElementById("captcha_id");
+      let textBox = document.getElementById("captchaString");
+      
+      if (img && textBox) {
+        img.style.height = "40px";
+        img.style.width = "200px";
+        solveChennai(img, textBox, () => {
+          textBox.dispatchEvent(new Event('input', { bubbles: true }));
+          textBox.dispatchEvent(new Event('change', { bubbles: true }));
+          textBox.dispatchEvent(new Event('keyup', { bubbles: true }));
+          
+          if (autoSubmit) {
+            setTimeout(() => {
+              const form = document.getElementById("studLogin");
+              if (form) {
+                form.submit();
+              }
+            }, 1000);
+          }
+        });
+      }
+    };
     
-    if (img && textBox) {
-      img.style.height = "40px";
-      img.style.width = "200px";
-      solveChennai(img, textBox, () => {
-        // Dispatch events to ensure the captcha value is registered
-        textBox.dispatchEvent(new Event('input', { bubbles: true }));
-        textBox.dispatchEvent(new Event('change', { bubbles: true }));
-        
-        if (autoSubmit) {
-          setTimeout(() => {
-            const submitBtn = document.querySelector('button[type="submit"]');
-            if (submitBtn) submitBtn.click();
-          }, 500);
-        }
+    solveCaptchaStep1();
+    
+    const testDiv = document.getElementById("test");
+    if (testDiv) {
+      const observer = new MutationObserver(() => {
+        setTimeout(solveCaptchaStep1, 100);
       });
-      console.log("Step 1 CAPTCHA solved");
+      observer.observe(testDiv, { 
+        childList: true, 
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['src'] 
+      });
+    }
+    
+    const refreshButton = document.getElementById("refreshCaptchaProcess");
+    if (refreshButton) {
+      refreshButton.addEventListener('click', () => {
+        setTimeout(solveCaptchaStep1, 500);
+      });
     }
   }
 }
 
-// Also run when DOM is ready (in case load event already fired)
 if (document.readyState === "complete" || document.readyState === "interactive") {
   setTimeout(tryUrls, 100);
 }
