@@ -39,6 +39,4 @@ The extension will:
 - Clean up the page view  
 
 ## Credits
-- Original project: **VtopCaptchaSolver3.0** by *Pratyush*  
-- Original repository: https://github.com/pratyush3124/VtopCaptchaSolver3.0  
-- This version modifies the structure, fixes model issues, removes data-sending code, limits support to Chennai campus, and simplifies the overall UI.
+- captcha weights: **[VtopCaptchaSolver3.0](https://github.com/pratyush3124/VtopCaptchaSolver3.0)** by *Pratyush*
