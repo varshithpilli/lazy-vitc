@@ -5,6 +5,8 @@
     let keywords = [];
     let highlightColor = '#FFFF00';
     let highlightEnabled = true;
+    let removeDelayEnabled = false;
+    let autoClickEnabled = false;
     let settings = {
         viewShowRatings: true,
         viewShowDetails: false,
@@ -271,6 +273,7 @@
 
 
     function observeAndInject() {
+        applyFFCSPatches();
         setTimeout(() => {
             injectRatings();
             applyKeywordHighlighting();
@@ -287,10 +290,71 @@
         observer.observe(document.body, { childList: true, subtree: true });
     }
 
+    function applyFFCSPatches() {
+        if (!window.location.href.includes('vtopregcc.vit.ac.in')) return;
+
+        if (removeDelayEnabled) {
+            window.DelayRedirect = function() {
+                const dv = document.getElementById("dvCountDown");
+                const ab = document.getElementById("agreeButton");
+                if (dv) dv.style.display = "none";
+                if (ab) ab.style.display = "block";
+            };
+
+            const style = document.createElement("style");
+            style.id = "ffcs-delay-killer";
+            style.innerHTML = "#dvCountDown,#lblCount{display:none!important}";
+            if (!document.getElementById("ffcs-delay-killer")) document.head.appendChild(style);
+
+            for (let i = 1; i < 9999; i++) clearInterval(i);
+
+            setTimeout(() => {
+                const dv = document.getElementById("dvCountDown");
+                const ab = document.getElementById("agreeButton");
+                if (dv) dv.style.display = "none";
+                if (ab) ab.style.display = "block";
+            }, 100);
+        } else {
+            const style = document.getElementById("ffcs-delay-killer");
+            if (style) style.remove();
+        }
+
+        if (autoClickEnabled) {
+            const autoInt = setInterval(() => {
+                const btn = document.querySelector('button[type="submit"]');
+                if (btn && (btn.textContent.includes("Start") || btn.textContent.includes("Proceed"))) {
+                    btn.click();
+                    clearInterval(autoInt);
+                }
+            }, 200);
+            setTimeout(() => clearInterval(autoInt), 10000);
+        }
+    }
+
     function initSidebar() {
         loadSettings();
         loadRatings();
         loadKeywords();
+
+        document.getElementById('removeDelay')?.addEventListener('change', (e) => {
+            removeDelayEnabled = e.target.checked;
+            chrome.storage.local.set({ removeDelayEnabled });
+            chrome.tabs.query({}, tabs => {
+                tabs.forEach(tab => {
+                    chrome.tabs.sendMessage(tab.id, { type: 'FFCS_PATCHES_UPDATED', removeDelayEnabled, autoClickEnabled }).catch(() => {});
+                });
+            });
+        });
+
+        document.getElementById('autoClick')?.addEventListener('change', (e) => {
+            autoClickEnabled = e.target.checked;
+            chrome.storage.local.set({ autoClickEnabled });
+            chrome.tabs.query({}, tabs => {
+                tabs.forEach(tab => {
+                    chrome.tabs.sendMessage(tab.id, { type: 'FFCS_PATCHES_UPDATED', removeDelayEnabled, autoClickEnabled }).catch(() => {});
+                });
+            });
+        });
 
         document.getElementById('addKeywordBtn')?.addEventListener('click', addKeyword);
         
@@ -390,15 +454,23 @@
     }
 
     function loadKeywords() {
-        chrome.storage.local.get(['keywords', 'highlightColor', 'highlightEnabled'], result => {
+        chrome.storage.local.get(['keywords', 'highlightColor', 'highlightEnabled', 'removeDelayEnabled', 'autoClickEnabled'], result => {
             keywords = result.keywords || [];
             highlightColor = result.highlightColor || '#FFFF00';
             highlightEnabled = result.highlightEnabled !== undefined ? result.highlightEnabled : true;
+            removeDelayEnabled = result.removeDelayEnabled === true;
+            autoClickEnabled = result.autoClickEnabled === true;
             if (document.getElementById('highlightColorPicker')) {
                 document.getElementById('highlightColorPicker').value = highlightColor;
             }
             if (document.getElementById('highlightToggle')) {
                 document.getElementById('highlightToggle').checked = highlightEnabled;
+            }
+            if (document.getElementById('removeDelay')) {
+                document.getElementById('removeDelay').checked = removeDelayEnabled;
+            }
+            if (document.getElementById('autoClick')) {
+                document.getElementById('autoClick').checked = autoClickEnabled;
             }
             renderKeywords();
         });
@@ -521,15 +593,22 @@
             highlightEnabled = req.highlightEnabled !== undefined ? req.highlightEnabled : true;
             applyKeywordHighlighting();
         }
+        if (req.type === 'FFCS_PATCHES_UPDATED') {
+            removeDelayEnabled = req.removeDelayEnabled === true;
+            autoClickEnabled = req.autoClickEnabled === true;
+            applyFFCSPatches();
+        }
     });
 
     if (typeof chrome !== 'undefined' && chrome.storage) {
         if (isFFCSPage()) {
-            chrome.storage.local.get(['facultyRatings', 'keywords', 'highlightColor', 'highlightEnabled', 'viewShowRatings', 'viewShowDetails', 'viewSortRating', 'registerShowRatings', 'registerShowDetails', 'registerSortRating'], result => {
+            chrome.storage.local.get(['facultyRatings', 'keywords', 'highlightColor', 'highlightEnabled', 'removeDelayEnabled', 'autoClickEnabled', 'viewShowRatings', 'viewShowDetails', 'viewSortRating', 'registerShowRatings', 'registerShowDetails', 'registerSortRating'], result => {
                 facultyRatings = result.facultyRatings || [];
                 keywords = result.keywords || [];
                 highlightColor = result.highlightColor || '#FFFF00';
                 highlightEnabled = result.highlightEnabled !== undefined ? result.highlightEnabled : true;
+                removeDelayEnabled = result.removeDelayEnabled === true;
+                autoClickEnabled = result.autoClickEnabled === true;
                 settings.viewShowRatings = result.viewShowRatings !== false;
                 settings.viewShowDetails = result.viewShowDetails === true;
                 settings.viewSortRating = result.viewSortRating === true;
