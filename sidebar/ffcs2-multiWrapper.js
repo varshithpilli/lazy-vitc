@@ -78,80 +78,142 @@
         return false;
     }
 
+    // function extractRegisteredCourses() {
+    //     console.log('[FFCS] Extracting registered courses...');
+    //     registeredCourses = [];
+
+    //     const wrapper = document.getElementById('page-wrapper-timetable');
+    //     if (!wrapper) return;
+
+    //     const tables = wrapper.querySelectorAll('table.w3-table-all');
+    //     console.log('[FFCS] Found tables:', tables.length);
+
+    //     let registeredTable = null;
+    //     for (let table of tables) {
+    //         if (table.textContent.includes('Class Detail')) {
+    //             registeredTable = table;
+    //             break;
+    //         }
+    //     }
+
+    //     if (!registeredTable) return;
+
+    //     const tbody = registeredTable.querySelector('tbody');
+    //     if (!tbody) return;
+
+    //     const rows = tbody.querySelectorAll('tr');
+    //     console.log('[FFCS] Found rows:', rows.length);
+
+    //     rows.forEach((row, idx) => {
+    //         const cells = row.querySelectorAll('td');
+    //         if (cells.length < 7) return;
+
+    //         const courseDetail = cells[1]?.textContent?.trim();
+    //         const classDetail = cells[6]?.textContent?.trim().replace(/\s+/g, ' '); // Normalize whitespace
+
+    //         console.log(`[FFCS] Row ${idx}: "${courseDetail?.substring(0, 15)}" -> "${classDetail}"`);
+
+    //         if (!courseDetail || !classDetail) return;
+
+    //         // More flexible regex to handle whitespace
+    //         const match = classDetail.match(/([A-Z0-9+]+)\s*-\s*[A-Z]/);
+    //         if (match) {
+    //             const fullSlot = match[1].trim();
+    //             const slots = fullSlot.split('+').map(s => s.trim()).filter(s => s);
+                
+    //             const course = {
+    //                 name: courseDetail.split(' - ')[1] || courseDetail,
+    //                 code: courseDetail.split(' - ')[0] || courseDetail,
+    //                 slots: slots,
+    //                 fullSlot: fullSlot
+    //             };
+
+    //             registeredCourses.push(course);
+    //             console.log(`[FFCS] ✓ ${course.code} (${fullSlot}) slots: ${slots.join(', ')}`);
+    //         } else {
+    //             console.log(`[FFCS] ✗ No match for: "${classDetail}"`);
+    //         }
+    //     });
+
+    //     console.log('[FFCS] Total courses:', registeredCourses.length);
+    //     console.log('[FFCS] Registered slots:', registeredCourses.map(c => c.fullSlot).join(', '));
+    // }
+
     function extractRegisteredCourses() {
         console.log('[FFCS] Extracting registered courses...');
         registeredCourses = [];
 
         const wrapper = document.getElementById('page-wrapper-timetable');
-        if (!wrapper) {
-            console.log('[FFCS] Timetable wrapper not found');
-            return;
-        }
+        if (!wrapper) return;
 
         const tables = wrapper.querySelectorAll('table.w3-table-all');
-        console.log('[FFCS] Found tables in wrapper:', tables.length);
+        console.log('[FFCS] Found tables:', tables.length);
 
         let registeredTable = null;
         for (let table of tables) {
-            const headerText = table.textContent;
-            if (headerText.includes('Class Detail')) {
+            if (table.textContent.includes('Class Detail')) {
                 registeredTable = table;
-                console.log('[FFCS] Found registered courses table');
                 break;
             }
         }
 
         if (!registeredTable) {
-            console.log('[FFCS] No registered courses table found');
+            console.log('[FFCS] ❗ Class Detail table not found');
             return;
         }
 
-        // Look in tbody for registered courses
         const tbody = registeredTable.querySelector('tbody');
-        if (!tbody) {
-            console.log('[FFCS] No tbody in registered table');
-            return;
-        }
+        if (!tbody) return;
 
         const rows = tbody.querySelectorAll('tr');
-        console.log('[FFCS] Found rows in registered table:', rows.length);
+        console.log('[FFCS] Found rows:', rows.length);
 
         rows.forEach((row, idx) => {
             const cells = row.querySelectorAll('td');
             if (cells.length < 7) return;
 
             const courseDetail = cells[1]?.textContent?.trim();
-            const classDetail = cells[6]?.textContent?.trim();
+            const classDetail = cells[6]?.textContent?.trim().replace(/\s+/g, ' ');
 
-            console.log(`[FFCS] Row ${idx}: Course="${courseDetail?.substring(0, 20)}", Class="${classDetail?.substring(0, 30)}"`);
+            console.log(`[FFCS] Row ${idx}: "${courseDetail?.substring(0, 15)}" -> "${classDetail}"`);
 
             if (!courseDetail || !classDetail) return;
 
-            // Extract slots: "CH2025260502216 - F2+TF2 - AB3-504"
-            const match = classDetail.match(/\s-\s([A-Z0-9+]+)\s-\s/);
-            if (match) {
-                const fullSlot = match[1];
-                const slots = fullSlot.split('+').map(s => s.trim()).filter(s => s);
-                
-                const course = {
-                    name: courseDetail.split(' - ')[1] || courseDetail,
-                    code: courseDetail.split(' - ')[0] || courseDetail,
-                    slots: slots,
-                    fullSlot: fullSlot
-                };
+            // Split strict VTOP structure: REGID - SLOT - ROOM
+            const parts = classDetail.split(' - ').map(p => p.trim());
+            const regId   = parts[0] || "";
+            const slotStr = parts[1] || "";
+            const room    = parts[2] || "";
 
-                registeredCourses.push(course);
-                console.log(`[FFCS] ✓ ${course.code} (${fullSlot})`);
-            }
+            // handle NIL
+            const slots = (slotStr === "NIL") 
+                ? [] 
+                : slotStr.split('+').map(s => s.trim()).filter(Boolean);
+
+            const course = {
+                name: courseDetail.split(' - ')[1] || courseDetail,
+                code: courseDetail.split(' - ')[0] || courseDetail,
+                regId: regId,
+                fullSlot: slotStr,
+                slots: slots,
+                room: room
+            };
+
+            registeredCourses.push(course);
+            console.log(`[FFCS] ✓ ${course.code} slots: ${slots.join(', ') || 'NIL'} (${slotStr})`);
         });
 
-        console.log('[FFCS] Total registered courses:', registeredCourses.length);
+        console.log('[FFCS] Total courses:', registeredCourses.length);
+        console.log('[FFCS] Registered slots:', registeredCourses.map(c => c.fullSlot).join(', '));
     }
+
 
     function detectClashes(slotString) {
         const checkSlots = slotString.split('+').map(s => s.trim()).filter(s => s);
         const clashes = [];
         const seen = new Set();
+
+        console.log(`[FFCS] Checking "${slotString}" -> [${checkSlots.join(', ')}]`);
 
         for (let course of registeredCourses) {
             for (let regSlot of course.slots) {
@@ -167,6 +229,7 @@
                                 checkingSlot: checkSlot,
                                 fullSlot: course.fullSlot
                             });
+                            console.log(`[FFCS]   ⚠ Clash: ${regSlot} (${course.code}) ↔ ${checkSlot}`);
                         }
                         break;
                     }
@@ -181,20 +244,15 @@
         console.log('[FFCS] Adding clash info...');
         
         const pageWrapper = document.getElementById('page-wrapper');
-        if (!pageWrapper) {
-            console.log('[FFCS] Page wrapper not found');
-            return;
-        }
+        if (!pageWrapper) return;
 
         const tables = pageWrapper.querySelectorAll('table.w3-table-all');
-        console.log('[FFCS] Found tables in page-wrapper:', tables.length);
+        console.log('[FFCS] Found tables:', tables.length);
 
         tables.forEach((table, tableIdx) => {
-            // Get ALL rows including those in thead (VTOP puts data rows in thead!)
             const allRows = table.querySelectorAll('thead tr, tbody tr');
-            console.log(`[FFCS] Table ${tableIdx}: Found ${allRows.length} total rows`);
-
-            // Find the header row with "Slot", "Venue", "Faculty"
+            
+            // Find header
             let headerRow = null;
             let slotIdx = -1, venueIdx = -1, facultyIdx = -1;
 
@@ -202,7 +260,6 @@
                 const cells = row.querySelectorAll('th');
                 if (cells.length >= 3) {
                     const headers = Array.from(cells).map(th => th.textContent.trim());
-                    console.log(`[FFCS] Table ${tableIdx}: Checking headers:`, headers);
                     
                     slotIdx = headers.indexOf('Slot');
                     venueIdx = headers.indexOf('Venue');
@@ -210,23 +267,18 @@
                     
                     if (slotIdx >= 0 && facultyIdx >= 0) {
                         headerRow = row;
-                        console.log(`[FFCS] Table ${tableIdx}: Found header (Slot=${slotIdx}, Faculty=${facultyIdx})`);
+                        console.log(`[FFCS] Table ${tableIdx}: Found header`);
                         break;
                     }
                 }
             }
 
-            if (!headerRow) {
-                console.log(`[FFCS] Table ${tableIdx}: Not a slot table`);
-                return;
-            }
+            if (!headerRow) return;
 
-            // Process rows AFTER the header
             let startProcessing = false;
             let processed = 0;
 
             allRows.forEach((row, rowIdx) => {
-                // Start processing after we pass the header row
                 if (row === headerRow) {
                     startProcessing = true;
                     return;
@@ -235,56 +287,45 @@
                 if (!startProcessing) return;
 
                 const cells = row.querySelectorAll('td');
-                if (cells.length === 0) return; // Skip rows with no td
+                if (cells.length === 0) return;
 
-                // Skip section headers like "Theory Slots"
                 if (cells[0].colSpan > 1 || cells[0].textContent.trim().includes('Slots')) {
-                    console.log(`[FFCS] Row ${rowIdx}: Section header, skipping`);
                     return;
                 }
 
-                if (cells.length <= facultyIdx) {
-                    console.log(`[FFCS] Row ${rowIdx}: Not enough cells (${cells.length})`);
-                    return;
-                }
+                if (cells.length <= slotIdx) return;
 
                 const slotCell = cells[slotIdx];
-                const facultyCell = cells[facultyIdx];
                 const slot = slotCell?.textContent?.trim();
 
-                if (!slot || !facultyCell) {
-                    console.log(`[FFCS] Row ${rowIdx}: Missing data`);
-                    return;
-                }
-
-                console.log(`[FFCS] Row ${rowIdx}: Processing "${slot}"`);
+                if (!slot) return;
 
                 // Store original
-                if (!facultyCell.dataset.original) {
-                    facultyCell.dataset.original = facultyCell.innerHTML;
+                if (!slotCell.dataset.original) {
+                    slotCell.dataset.original = slotCell.innerHTML;
                 }
 
                 if (!showClashStatus) {
-                    facultyCell.innerHTML = facultyCell.dataset.original;
-                    facultyCell.style.backgroundColor = '';
+                    slotCell.innerHTML = slotCell.dataset.original;
+                    row.style.backgroundColor = '';
                     return;
                 }
 
                 const clashes = detectClashes(slot);
-                const original = facultyCell.dataset.original;
+                const original = slotCell.dataset.original;
 
                 if (clashes.length === 0) {
-                    facultyCell.style.backgroundColor = '#d4edda';
-                    facultyCell.innerHTML = `${original}<br><span style="color:#155724;font-weight:bold;font-size:11px;">✓ No Clash</span>`;
-                    console.log(`[FFCS] Row ${rowIdx}: No clash`);
+                    // No clash - light green row
+                    row.style.backgroundColor = '#d4edda';
+                    slotCell.innerHTML = `${original}<br><span style="color:#155724;font-weight:bold;font-size:11px;">✓ No Clash</span>`;
                 } else {
-                    facultyCell.style.backgroundColor = '#fff3cd';
+                    // Clash - light red row
+                    row.style.backgroundColor = '#f8d7da';
                     const details = clashes.map(c => `${c.courseCode}`).join(', ');
-                    facultyCell.innerHTML = `${original}<br><span style="color:#856404;font-weight:bold;font-size:10px;">⚠ ${details}</span>`;
-                    facultyCell.title = clashes.map(c => 
-                        `Clash: ${c.courseName}\nSlot: ${c.fullSlot}\nConflict: ${c.conflictSlot}↔${c.checkingSlot}`
+                    slotCell.innerHTML = `${original}<br><span style="color:#721c24;font-weight:bold;font-size:10px;">⚠ ${details}</span>`;
+                    slotCell.title = clashes.map(c => 
+                        `CLASH: ${c.courseName} (${c.courseCode})\nYour slot: ${c.fullSlot}\nConflict: ${c.conflictSlot} ↔ ${c.checkingSlot}`
                     ).join('\n\n');
-                    console.log(`[FFCS] Row ${rowIdx}: Clash with ${details}`);
                 }
 
                 processed++;
@@ -317,7 +358,6 @@
         const mainForm = document.getElementById('mainPageForm');
 
         if (!wrapper || !mainForm) {
-            console.error('[FFCS] Missing elements');
             isProcessing = false;
             return;
         }
@@ -342,7 +382,7 @@
         })
         .catch(err => {
             console.error('[FFCS] Error:', err);
-            wrapper.innerHTML = '<div style="color:red;padding:20px;text-align:center;">Error. Refresh page.</div>';
+            wrapper.innerHTML = '<div style="color:red;padding:20px;text-align:center;">Error loading</div>';
             isProcessing = false;
         });
     }
@@ -383,8 +423,6 @@
         const pageWrapper = document.getElementById('page-wrapper');
         if (!pageWrapper) return;
 
-        console.log('[FFCS] Creating wrapper...');
-
         const wrapper = document.createElement('div');
         wrapper.id = 'page-wrapper-timetable';
         wrapper.style.cssText = 'border-top:2px solid #ccc;margin-top:20px;padding:20px;background:#fff;';
@@ -395,15 +433,10 @@
         } else {
             pageWrapper.parentNode.insertBefore(wrapper, pageWrapper.nextSibling);
         }
-
-        console.log('[FFCS] Wrapper created');
     }
 
     function init() {
-        if (!location.href.includes('vtopregcc.vit.ac.in')) {
-            console.log('[FFCS] Not on VTOP');
-            return;
-        }
+        if (!location.href.includes('vtopregcc.vit.ac.in')) return;
 
         console.log('[FFCS] Initializing...');
 
@@ -419,11 +452,10 @@
                 createWrapper();
                 loadTimetable();
 
-                // Monitor page changes
                 new MutationObserver(() => {
                     if (!isProcessing) {
                         setTimeout(() => {
-                            console.log('[FFCS] Page changed, updating...');
+                            console.log('[FFCS] Page updated');
                             addClashInfo();
                         }, 500);
                     }
