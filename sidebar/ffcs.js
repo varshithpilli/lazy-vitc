@@ -13,7 +13,8 @@
         viewSortRating: false,
         registerShowRatings: true,
         registerShowDetails: false,
-        registerSortRating: false
+        registerSortRating: false,
+        multiWrapperEnabled: false  // New setting for multi-wrapper feature
     };
     const originalRowOrder = new WeakMap();
 
@@ -115,7 +116,12 @@
             badge.innerHTML = `${rating}⭐ T:${faculty.teaching} A:${faculty.attendance_flex} S:${faculty.supportiveness} M:${faculty.marks}`;
         } else {
             badge.textContent = `${rating}⭐`;
-            badge.title = `${faculty.name}\nTeaching: ${faculty.teaching}\nAttendance: ${faculty.attendance_flex}\nSupport: ${faculty.supportiveness}\nMarks: ${faculty.marks}\nTotal Ratings: ${faculty.total_ratings}`;
+            badge.title = `${faculty.name}
+Teaching: ${faculty.teaching}
+Attendance: ${faculty.attendance_flex}
+Support: ${faculty.supportiveness}
+Marks: ${faculty.marks}
+Total Ratings: ${faculty.total_ratings}`;
         }
         badge.style.backgroundColor = getRatingColor(faculty.overall_rating);
         return badge;
@@ -396,6 +402,21 @@
             });
         });
 
+        // Multi-wrapper toggle
+        document.getElementById('multiWrapperToggle')?.addEventListener('change', (e) => {
+            settings.multiWrapperEnabled = e.target.checked;
+            saveSettings();
+            // Send message to content script to enable/disable multi-wrapper
+            chrome.tabs.query({url: "*://vtopregcc.vit.ac.in/*"}, tabs => {
+                tabs.forEach(tab => {
+                    chrome.tabs.sendMessage(tab.id, { 
+                        type: 'MULTI_WRAPPER_TOGGLE', 
+                        enabled: settings.multiWrapperEnabled 
+                    }).catch(() => {});
+                });
+            });
+        });
+
         document.getElementById('addKeywordBtn')?.addEventListener('click', addKeyword);
         
         document.getElementById('keywordInput')?.addEventListener('keypress', (e) => {
@@ -454,13 +475,14 @@
     }
 
     function loadSettings() {
-        chrome.storage.local.get(['viewShowRatings', 'viewShowDetails', 'viewSortRating', 'registerShowRatings', 'registerShowDetails', 'registerSortRating'], result => {
+        chrome.storage.local.get(['viewShowRatings', 'viewShowDetails', 'viewSortRating', 'registerShowRatings', 'registerShowDetails', 'registerSortRating', 'multiWrapperEnabled'], result => {
             settings.viewShowRatings = result.viewShowRatings !== false;
             settings.viewShowDetails = result.viewShowDetails === true;
             settings.viewSortRating = result.viewSortRating === true;
             settings.registerShowRatings = result.registerShowRatings !== false;
             settings.registerShowDetails = result.registerShowDetails === true;
             settings.registerSortRating = result.registerSortRating === true;
+            settings.multiWrapperEnabled = result.multiWrapperEnabled === true;  // Load multi-wrapper setting
 
             if (document.getElementById('viewShowRatings')) {
                 document.getElementById('viewShowRatings').checked = settings.viewShowRatings;
@@ -469,6 +491,7 @@
                 document.getElementById('registerShowRatings').checked = settings.registerShowRatings;
                 document.getElementById('registerShowDetails').checked = settings.registerShowDetails;
                 document.getElementById('registerSortRating').checked = settings.registerSortRating;
+                document.getElementById('multiWrapperToggle').checked = settings.multiWrapperEnabled;  // Set multi-wrapper toggle
             }
         });
     }
@@ -480,7 +503,8 @@
             viewSortRating: settings.viewSortRating,
             registerShowRatings: settings.registerShowRatings,
             registerShowDetails: settings.registerShowDetails,
-            registerSortRating: settings.registerSortRating
+            registerSortRating: settings.registerSortRating,
+            multiWrapperEnabled: settings.multiWrapperEnabled  // Save multi-wrapper setting
         }, () => {
             chrome.tabs.query({}, tabs => {
                 tabs.forEach(tab => {
@@ -660,6 +684,13 @@
             removeDelayEnabled = req.removeDelayEnabled === true;
             autoClickEnabled = req.autoClickEnabled === true;
             applyFFCSPatches();
+        }
+        // Handle multi-wrapper toggle messages
+        if (req.type === 'MULTI_WRAPPER_STATUS') {
+            settings.multiWrapperEnabled = req.enabled;
+            if (document.getElementById('multiWrapperToggle')) {
+                document.getElementById('multiWrapperToggle').checked = req.enabled;
+            }
         }
     });
 
