@@ -1,137 +1,441 @@
 (function () {
     'use strict';
 
-    function isFFCS() {
-        return location.href.includes("vtopregcc.vit.ac.in");
+    console.log('[FFCS] Script initialized');
+
+    let registeredCourses = [];
+    let showClashStatus = true;
+    let isProcessing = false;
+
+    const slotTimings = {
+        'A1': [['MON', 480, 530], ['WED', 535, 585]],
+        'A2': [['MON', 840, 890], ['WED', 895, 945], ['FRI', 950, 1000]],
+        'B1': [['TUE', 480, 530], ['THU', 535, 585]],
+        'B2': [['TUE', 840, 890], ['THU', 895, 945]],
+        'C1': [['WED', 480, 530], ['FRI', 535, 585]],
+        'C2': [['WED', 840, 890], ['FRI', 895, 945]],
+        'D1': [['MON', 590, 640], ['THU', 480, 530]],
+        'D2': [['MON', 950, 1000], ['THU', 840, 890]],
+        'E1': [['TUE', 590, 640], ['FRI', 480, 530]],
+        'E2': [['TUE', 950, 1000], ['FRI', 840, 890]],
+        'F1': [['MON', 535, 585], ['WED', 590, 640]],
+        'F2': [['MON', 895, 945], ['WED', 950, 1000]],
+        'G1': [['TUE', 535, 585], ['THU', 590, 640]],
+        'G2': [['TUE', 895, 945], ['THU', 950, 1000]],
+        'TA1': [['FRI', 590, 640]],
+        'TA2': [['FRI', 950, 1000]],
+        'TB1': [['MON', 645, 695]],
+        'TB2': [['MON', 1005, 1055]],
+        'TC1': [['TUE', 645, 695]],
+        'TC2': [['TUE', 1005, 1055]],
+        'TD1': [['WED', 645, 695]],
+        'TD2': [['WED', 1005, 1055]],
+        'TE1': [['THU', 645, 695]],
+        'TE2': [['THU', 1005, 1055]],
+        'TF1': [['FRI', 645, 695]],
+        'TF2': [['FRI', 1005, 1055]],
+        'TG1': [['MON', 700, 750]],
+        'TG2': [['MON', 1060, 1110]],
+        'TAA1': [['TUE', 700, 750]],
+        'TAA2': [['TUE', 1060, 1110]],
+        'TBB1': [['WED', 700, 750]],
+        'TBB2': [['WED', 1060, 1110]],
+        'TCC1': [['THU', 700, 750]],
+        'TCC2': [['THU', 1060, 1110]],
+        'TDD1': [['FRI', 700, 750]],
+        'TDD2': [['FRI', 1060, 1110]],
+        'L1': [['MON', 480, 530]], 'L2': [['MON', 530, 580]], 'L3': [['MON', 590, 640]], 'L4': [['MON', 640, 690]],
+        'L5': [['MON', 700, 750]], 'L6': [['MON', 750, 800]], 'L7': [['TUE', 480, 530]], 'L8': [['TUE', 530, 580]],
+        'L9': [['TUE', 590, 640]], 'L10': [['TUE', 640, 690]], 'L11': [['TUE', 700, 750]], 'L12': [['TUE', 750, 800]],
+        'L13': [['WED', 480, 530]], 'L14': [['WED', 530, 580]], 'L15': [['WED', 590, 640]], 'L16': [['WED', 640, 690]],
+        'L17': [['WED', 700, 750]], 'L18': [['WED', 750, 800]], 'L19': [['THU', 480, 530]], 'L20': [['THU', 530, 580]],
+        'L21': [['THU', 590, 640]], 'L22': [['THU', 640, 690]], 'L23': [['THU', 700, 750]], 'L24': [['THU', 750, 800]],
+        'L25': [['FRI', 480, 530]], 'L26': [['FRI', 530, 580]], 'L27': [['FRI', 590, 640]], 'L28': [['FRI', 640, 690]],
+        'L29': [['FRI', 700, 750]], 'L30': [['FRI', 750, 800]], 'L31': [['MON', 840, 890]], 'L32': [['MON', 890, 940]],
+        'L33': [['MON', 950, 1000]], 'L34': [['MON', 1000, 1050]], 'L35': [['MON', 1060, 1110]], 'L36': [['MON', 1110, 1160]],
+        'L37': [['TUE', 840, 890]], 'L38': [['TUE', 890, 940]], 'L39': [['TUE', 950, 1000]], 'L40': [['TUE', 1000, 1050]],
+        'L41': [['TUE', 1060, 1110]], 'L42': [['TUE', 1110, 1160]], 'L43': [['WED', 840, 890]], 'L44': [['WED', 890, 940]],
+        'L45': [['WED', 950, 1000]], 'L46': [['WED', 1000, 1050]], 'L47': [['WED', 1060, 1110]], 'L48': [['WED', 1110, 1160]],
+        'L49': [['THU', 840, 890]], 'L50': [['THU', 890, 940]], 'L51': [['THU', 950, 1000]], 'L52': [['THU', 1000, 1050]],
+        'L53': [['THU', 1060, 1110]], 'L54': [['THU', 1110, 1160]], 'L55': [['FRI', 840, 890]], 'L56': [['FRI', 890, 940]],
+        'L57': [['FRI', 950, 1000]], 'L58': [['FRI', 1000, 1050]], 'L59': [['FRI', 1060, 1110]], 'L60': [['FRI', 1110, 1160]]
+    };
+
+    function timeOverlaps(t1, t2) {
+        const [day1, start1, end1] = t1;
+        const [day2, start2, end2] = t2;
+        return day1 === day2 && start1 < end2 && start2 < end1;
     }
 
-    let lastRefreshTime = null;
-    let lastRefreshInterval = null;
-
-    function updateRefreshAge() {
-        if (!lastRefreshTime) return;
-
-        const ageLabel = document.getElementById("timetable-last-refresh");
-        if (!ageLabel) return;
-
-        const diff = Math.floor((Date.now() - lastRefreshTime) / 1000);
-        let text;
-
-        if (diff < 60) text = `${diff}s ago`;
-        else if (diff < 3600) text = `${Math.floor(diff / 60)}m ago`;
-        else text = `${Math.floor(diff / 3600)}h ago`;
-
-        ageLabel.textContent = `Last refreshed: ${text}`;
+    function slotsClash(slot1, slot2) {
+        const timings1 = slotTimings[slot1] || [];
+        const timings2 = slotTimings[slot2] || [];
+        for (let t1 of timings1) {
+            for (let t2 of timings2) {
+                if (timeOverlaps(t1, t2)) return true;
+            }
+        }
+        return false;
     }
 
-    function createTimetableWrapper() {
-        const base = document.getElementById("page-wrapper");
-        if (!base) return;
+    function extractRegisteredCourses() {
+        console.log('[FFCS] Extracting registered courses...');
+        registeredCourses = [];
 
-        let timetable = document.getElementById("page-wrapper-timetable");
-        if (timetable) return;
+        const wrapper = document.getElementById('page-wrapper-timetable');
+        if (!wrapper) {
+            console.log('[FFCS] Timetable wrapper not found');
+            return;
+        }
 
-        timetable = document.createElement("div");
-        timetable.id = "page-wrapper-timetable";
-        timetable.style.cssText = "border-top: 2px solid #ccc; margin-top: 20px; padding: 20px;";
+        const tables = wrapper.querySelectorAll('table.w3-table-all');
+        console.log('[FFCS] Found tables in wrapper:', tables.length);
 
-        // Centering wrapper for btn + time label
-        const controls = document.createElement("div");
-        controls.style.cssText = "text-align:center; margin-bottom:15px; display:flex; flex-direction:column; gap:8px; align-items:center;";
+        let registeredTable = null;
+        for (let table of tables) {
+            const headerText = table.textContent;
+            if (headerText.includes('Class Detail')) {
+                registeredTable = table;
+                console.log('[FFCS] Found registered courses table');
+                break;
+            }
+        }
 
-        const refreshBtn = document.createElement("button");
-        refreshBtn.textContent = "Refresh Timetable";
-        refreshBtn.className = "btn-primary w3-btn w3-round-large";
-        refreshBtn.style.cssText = "background-color:#4CAF50;color:white;padding:12px 24px;font-size:16px;cursor:pointer;border:none;border-radius:8px;";
-        refreshBtn.onclick = loadTimetable;
+        if (!registeredTable) {
+            console.log('[FFCS] No registered courses table found');
+            return;
+        }
 
-        const lastRef = document.createElement("span");
-        lastRef.id = "timetable-last-refresh";
-        lastRef.style.cssText = "font-size:13px;color:#666;";
+        // Look in tbody for registered courses
+        const tbody = registeredTable.querySelector('tbody');
+        if (!tbody) {
+            console.log('[FFCS] No tbody in registered table');
+            return;
+        }
 
-        controls.appendChild(refreshBtn);
-        controls.appendChild(lastRef);
+        const rows = tbody.querySelectorAll('tr');
+        console.log('[FFCS] Found rows in registered table:', rows.length);
 
-        timetable.appendChild(controls);
+        rows.forEach((row, idx) => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length < 7) return;
 
-        const content = document.createElement("div");
-        content.id = "timetable-content";
-        timetable.appendChild(content);
+            const courseDetail = cells[1]?.textContent?.trim();
+            const classDetail = cells[6]?.textContent?.trim();
 
-        base.parentNode.insertBefore(timetable, base.nextSibling);
+            console.log(`[FFCS] Row ${idx}: Course="${courseDetail?.substring(0, 20)}", Class="${classDetail?.substring(0, 30)}"`);
+
+            if (!courseDetail || !classDetail) return;
+
+            // Extract slots: "CH2025260502216 - F2+TF2 - AB3-504"
+            const match = classDetail.match(/\s-\s([A-Z0-9+]+)\s-\s/);
+            if (match) {
+                const fullSlot = match[1];
+                const slots = fullSlot.split('+').map(s => s.trim()).filter(s => s);
+                
+                const course = {
+                    name: courseDetail.split(' - ')[1] || courseDetail,
+                    code: courseDetail.split(' - ')[0] || courseDetail,
+                    slots: slots,
+                    fullSlot: fullSlot
+                };
+
+                registeredCourses.push(course);
+                console.log(`[FFCS] ✓ ${course.code} (${fullSlot})`);
+            }
+        });
+
+        console.log('[FFCS] Total registered courses:', registeredCourses.length);
+    }
+
+    function detectClashes(slotString) {
+        const checkSlots = slotString.split('+').map(s => s.trim()).filter(s => s);
+        const clashes = [];
+        const seen = new Set();
+
+        for (let course of registeredCourses) {
+            for (let regSlot of course.slots) {
+                for (let checkSlot of checkSlots) {
+                    if (slotsClash(regSlot, checkSlot)) {
+                        const key = `${course.code}-${regSlot}`;
+                        if (!seen.has(key)) {
+                            seen.add(key);
+                            clashes.push({
+                                courseName: course.name,
+                                courseCode: course.code,
+                                conflictSlot: regSlot,
+                                checkingSlot: checkSlot,
+                                fullSlot: course.fullSlot
+                            });
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        return clashes;
+    }
+
+    function addClashInfo() {
+        console.log('[FFCS] Adding clash info...');
+        
+        const pageWrapper = document.getElementById('page-wrapper');
+        if (!pageWrapper) {
+            console.log('[FFCS] Page wrapper not found');
+            return;
+        }
+
+        const tables = pageWrapper.querySelectorAll('table.w3-table-all');
+        console.log('[FFCS] Found tables in page-wrapper:', tables.length);
+
+        tables.forEach((table, tableIdx) => {
+            // Get ALL rows including those in thead (VTOP puts data rows in thead!)
+            const allRows = table.querySelectorAll('thead tr, tbody tr');
+            console.log(`[FFCS] Table ${tableIdx}: Found ${allRows.length} total rows`);
+
+            // Find the header row with "Slot", "Venue", "Faculty"
+            let headerRow = null;
+            let slotIdx = -1, venueIdx = -1, facultyIdx = -1;
+
+            for (let row of allRows) {
+                const cells = row.querySelectorAll('th');
+                if (cells.length >= 3) {
+                    const headers = Array.from(cells).map(th => th.textContent.trim());
+                    console.log(`[FFCS] Table ${tableIdx}: Checking headers:`, headers);
+                    
+                    slotIdx = headers.indexOf('Slot');
+                    venueIdx = headers.indexOf('Venue');
+                    facultyIdx = headers.indexOf('Faculty');
+                    
+                    if (slotIdx >= 0 && facultyIdx >= 0) {
+                        headerRow = row;
+                        console.log(`[FFCS] Table ${tableIdx}: Found header (Slot=${slotIdx}, Faculty=${facultyIdx})`);
+                        break;
+                    }
+                }
+            }
+
+            if (!headerRow) {
+                console.log(`[FFCS] Table ${tableIdx}: Not a slot table`);
+                return;
+            }
+
+            // Process rows AFTER the header
+            let startProcessing = false;
+            let processed = 0;
+
+            allRows.forEach((row, rowIdx) => {
+                // Start processing after we pass the header row
+                if (row === headerRow) {
+                    startProcessing = true;
+                    return;
+                }
+
+                if (!startProcessing) return;
+
+                const cells = row.querySelectorAll('td');
+                if (cells.length === 0) return; // Skip rows with no td
+
+                // Skip section headers like "Theory Slots"
+                if (cells[0].colSpan > 1 || cells[0].textContent.trim().includes('Slots')) {
+                    console.log(`[FFCS] Row ${rowIdx}: Section header, skipping`);
+                    return;
+                }
+
+                if (cells.length <= facultyIdx) {
+                    console.log(`[FFCS] Row ${rowIdx}: Not enough cells (${cells.length})`);
+                    return;
+                }
+
+                const slotCell = cells[slotIdx];
+                const facultyCell = cells[facultyIdx];
+                const slot = slotCell?.textContent?.trim();
+
+                if (!slot || !facultyCell) {
+                    console.log(`[FFCS] Row ${rowIdx}: Missing data`);
+                    return;
+                }
+
+                console.log(`[FFCS] Row ${rowIdx}: Processing "${slot}"`);
+
+                // Store original
+                if (!facultyCell.dataset.original) {
+                    facultyCell.dataset.original = facultyCell.innerHTML;
+                }
+
+                if (!showClashStatus) {
+                    facultyCell.innerHTML = facultyCell.dataset.original;
+                    facultyCell.style.backgroundColor = '';
+                    return;
+                }
+
+                const clashes = detectClashes(slot);
+                const original = facultyCell.dataset.original;
+
+                if (clashes.length === 0) {
+                    facultyCell.style.backgroundColor = '#d4edda';
+                    facultyCell.innerHTML = `${original}<br><span style="color:#155724;font-weight:bold;font-size:11px;">✓ No Clash</span>`;
+                    console.log(`[FFCS] Row ${rowIdx}: No clash`);
+                } else {
+                    facultyCell.style.backgroundColor = '#fff3cd';
+                    const details = clashes.map(c => `${c.courseCode}`).join(', ');
+                    facultyCell.innerHTML = `${original}<br><span style="color:#856404;font-weight:bold;font-size:10px;">⚠ ${details}</span>`;
+                    facultyCell.title = clashes.map(c => 
+                        `Clash: ${c.courseName}\nSlot: ${c.fullSlot}\nConflict: ${c.conflictSlot}↔${c.checkingSlot}`
+                    ).join('\n\n');
+                    console.log(`[FFCS] Row ${rowIdx}: Clash with ${details}`);
+                }
+
+                processed++;
+            });
+
+            console.log(`[FFCS] Table ${tableIdx}: Processed ${processed} rows`);
+        });
+    }
+
+    function toggleClash() {
+        showClashStatus = !showClashStatus;
+        console.log('[FFCS] Clash:', showClashStatus ? 'ON' : 'OFF');
+        
+        const btn = document.getElementById('ffcs-toggle-btn');
+        if (btn) {
+            btn.textContent = showClashStatus ? '🔍 Hide Clash' : '🔍 Show Clash';
+            btn.style.backgroundColor = showClashStatus ? '#ff9800' : '#4CAF50';
+        }
+        
+        addClashInfo();
     }
 
     function loadTimetable() {
-        const content = document.getElementById("timetable-content");
-        const mainForm = document.getElementById("mainPageForm");
+        if (isProcessing) return;
 
-        if (!content || !mainForm) return;
+        console.log('[FFCS] Loading timetable...');
+        isProcessing = true;
 
-        content.innerHTML = '<div style="text-align:center;padding:40px;"><img src="assets/img/482.GIF"><br> Loading timetable...</div>';
+        const wrapper = document.getElementById('page-wrapper-timetable');
+        const mainForm = document.getElementById('mainPageForm');
 
-        const bindData = new FormData(mainForm);
-
-        const done = () => {
-            lastRefreshTime = Date.now();
-            updateRefreshAge();
-
-            if (lastRefreshInterval) clearInterval(lastRefreshInterval);
-            lastRefreshInterval = setInterval(updateRefreshAge, 10000); // update every 10s
-        };
-
-        if (window.jQuery && window.jQuery.ajax) {
-            window.jQuery.ajax({
-                url: "viewRegistered",
-                type: "POST",
-                data: bindData,
-                cache: false,
-                processData: false,
-                contentType: false,
-                success: function(response) {
-                    content.innerHTML = response;
-                    done();
-                },
-                error: function() {
-                    content.innerHTML = '<div style="color:red;text-align:center;padding:20px;">Error loading timetable. Please try again.</div>';
-                }
-            });
-        } else {
-            fetch("viewRegistered", {
-                method: "POST",
-                body: bindData,
-                credentials: "include"
-            })
-            .then(response => response.text())
-            .then(html => {
-                content.innerHTML = html;
-                done();
-            })
-            .catch(error => {
-                content.innerHTML = '<div style="color:red;text-align:center;padding:20px;">Error loading timetable. Please try again.</div>';
-                console.error("Timetable load error:", error);
-            });
+        if (!wrapper || !mainForm) {
+            console.error('[FFCS] Missing elements');
+            isProcessing = false;
+            return;
         }
+
+        wrapper.innerHTML = '<div style="text-align:center;padding:40px;"><img src="assets/img/482.GIF"><br>Loading...</div>';
+
+        fetch('viewRegistered', {
+            method: 'POST',
+            body: new FormData(mainForm),
+            credentials: 'include'
+        })
+        .then(res => res.text())
+        .then(html => {
+            wrapper.innerHTML = html;
+            console.log('[FFCS] Timetable loaded');
+            
+            setTimeout(() => {
+                extractRegisteredCourses();
+                addClashInfo();
+                isProcessing = false;
+            }, 300);
+        })
+        .catch(err => {
+            console.error('[FFCS] Error:', err);
+            wrapper.innerHTML = '<div style="color:red;padding:20px;text-align:center;">Error. Refresh page.</div>';
+            isProcessing = false;
+        });
+    }
+
+    function createControls() {
+        if (document.getElementById('ffcs-controls')) return;
+
+        const pageWrapper = document.getElementById('page-wrapper');
+        if (!pageWrapper) return;
+
+        console.log('[FFCS] Creating controls...');
+
+        const controls = document.createElement('div');
+        controls.id = 'ffcs-controls';
+        controls.style.cssText = 'text-align:center;padding:20px;margin:20px 0;display:flex;gap:15px;justify-content:center;flex-wrap:wrap;border:2px solid #4CAF50;background:#f9f9f9;border-radius:8px;';
+
+        const refreshBtn = document.createElement('button');
+        refreshBtn.textContent = '🔄 Refresh Timetable';
+        refreshBtn.style.cssText = 'background:#4CAF50;color:white;padding:14px 28px;font-size:17px;cursor:pointer;border:none;border-radius:8px;box-shadow:0 2px 5px rgba(0,0,0,0.2);font-weight:bold;';
+        refreshBtn.onclick = loadTimetable;
+
+        const toggleBtn = document.createElement('button');
+        toggleBtn.id = 'ffcs-toggle-btn';
+        toggleBtn.textContent = '🔍 Hide Clash';
+        toggleBtn.style.cssText = 'background:#ff9800;color:white;padding:14px 28px;font-size:17px;cursor:pointer;border:none;border-radius:8px;box-shadow:0 2px 5px rgba(0,0,0,0.2);font-weight:bold;';
+        toggleBtn.onclick = toggleClash;
+
+        controls.appendChild(refreshBtn);
+        controls.appendChild(toggleBtn);
+
+        pageWrapper.parentNode.insertBefore(controls, pageWrapper.nextSibling);
+        console.log('[FFCS] Controls created');
+    }
+
+    function createWrapper() {
+        if (document.getElementById('page-wrapper-timetable')) return;
+
+        const pageWrapper = document.getElementById('page-wrapper');
+        if (!pageWrapper) return;
+
+        console.log('[FFCS] Creating wrapper...');
+
+        const wrapper = document.createElement('div');
+        wrapper.id = 'page-wrapper-timetable';
+        wrapper.style.cssText = 'border-top:2px solid #ccc;margin-top:20px;padding:20px;background:#fff;';
+
+        const controls = document.getElementById('ffcs-controls');
+        if (controls) {
+            controls.parentNode.insertBefore(wrapper, controls.nextSibling);
+        } else {
+            pageWrapper.parentNode.insertBefore(wrapper, pageWrapper.nextSibling);
+        }
+
+        console.log('[FFCS] Wrapper created');
     }
 
     function init() {
-        if (!isFFCS()) return;
+        if (!location.href.includes('vtopregcc.vit.ac.in')) {
+            console.log('[FFCS] Not on VTOP');
+            return;
+        }
 
-        const checkInterval = setInterval(() => {
-            const base = document.getElementById("page-wrapper");
-            const mainForm = document.getElementById("mainPageForm");
+        console.log('[FFCS] Initializing...');
 
-            if (base && mainForm) {
-                clearInterval(checkInterval);
-                createTimetableWrapper();
+        const check = setInterval(() => {
+            const pageWrapper = document.getElementById('page-wrapper');
+            const mainForm = document.getElementById('mainPageForm');
+
+            if (pageWrapper && mainForm) {
+                clearInterval(check);
+                console.log('[FFCS] DOM ready');
+                
+                createControls();
+                createWrapper();
                 loadTimetable();
+
+                // Monitor page changes
+                new MutationObserver(() => {
+                    if (!isProcessing) {
+                        setTimeout(() => {
+                            console.log('[FFCS] Page changed, updating...');
+                            addClashInfo();
+                        }, 500);
+                    }
+                }).observe(pageWrapper, { childList: true, subtree: false });
             }
         }, 500);
 
-        setTimeout(() => clearInterval(checkInterval), 10000);
+        setTimeout(() => clearInterval(check), 15000);
     }
 
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", init);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
     } else {
         init();
     }
