@@ -4,6 +4,8 @@
     let registeredCourses = [];
     let showClashStatus = true;
     let isProcessing = false;
+    let facultyRatingsTimeout = null;
+    let hasInjectedFacultyRatings = false;
 
     const slotTimings = {
         'A1': [['MON', 480, 530], ['WED', 535, 585]],
@@ -76,66 +78,100 @@
         return false;
     }
 
-    // function extractRegisteredCourses() {
-    //     console.log('[FFCS] Extracting registered courses...');
-    //     registeredCourses = [];
+    function normalize(str) {
+        return str.replace(/\s+/g, ' ').trim().toLowerCase();
+    }
 
-    //     const wrapper = document.getElementById('page-wrapper-timetable');
-    //     if (!wrapper) return;
+    function getRatingColor(r) {
+        if (r >= 9) return '#4CAF50';
+        if (r >= 8) return '#8BC34A';
+        if (r >= 7) return '#FFC107';
+        if (r >= 6) return '#FF9800';
+        return '#F44336';
+    }
 
-    //     const tables = wrapper.querySelectorAll('table.w3-table-all');
-    //     console.log('[FFCS] Found tables:', tables.length);
+    function findFaculty(name, facultyRatings) {
+        const n = normalize(name);
+        return facultyRatings.find(f => normalize(f.name) === n) || null;
+    }
 
-    //     let registeredTable = null;
-    //     for (let table of tables) {
-    //         if (table.textContent.includes('Class Detail')) {
-    //             registeredTable = table;
-    //             break;
-    //         }
-    //     }
+    function createBadge(faculty) {
+        const badge = document.createElement('span');
+        badge.className = 'faculty-rating-badge';
+        badge.style.cssText = 'margin-left:6px;padding:3px 7px;border-radius:3px;color:white;font-weight:bold;font-size:11px;display:inline-block;white-space:nowrap;vertical-align:middle;';
 
-    //     if (!registeredTable) return;
+        if (!faculty) {
+            badge.textContent = 'N/A';
+            badge.style.backgroundColor = '#9E9E9E';
+            return badge;
+        }
 
-    //     const tbody = registeredTable.querySelector('tbody');
-    //     if (!tbody) return;
+        const rating = faculty.overall_rating.toFixed(1);
+        badge.textContent = `${rating}⭐`;
+        badge.title = `${faculty.name}
+Teaching: ${faculty.teaching}
+Attendance: ${faculty.attendance_flex}
+Support: ${faculty.supportiveness}
+Marks: ${faculty.marks}
+Total Ratings: ${faculty.total_ratings}`;
+        badge.style.backgroundColor = getRatingColor(faculty.overall_rating);
+        return badge;
+    }
 
-    //     const rows = tbody.querySelectorAll('tr');
-    //     console.log('[FFCS] Found rows:', rows.length);
+    function injectFacultyRatingsInHomePage() {
+        // Debounce to prevent multiple rapid calls
+        clearTimeout(facultyRatingsTimeout);
+        facultyRatingsTimeout = setTimeout(() => {
+            chrome.storage.local.get(['facultyRatings'], result => {
+                const facultyRatings = result.facultyRatings || [];
+                if (facultyRatings.length === 0) return;
 
-    //     rows.forEach((row, idx) => {
-    //         const cells = row.querySelectorAll('td');
-    //         if (cells.length < 7) return;
-
-    //         const courseDetail = cells[1]?.textContent?.trim();
-    //         const classDetail = cells[6]?.textContent?.trim().replace(/\s+/g, ' '); // Normalize whitespace
-
-    //         console.log(`[FFCS] Row ${idx}: "${courseDetail?.substring(0, 15)}" -> "${classDetail}"`);
-
-    //         if (!courseDetail || !classDetail) return;
-
-    //         // More flexible regex to handle whitespace
-    //         const match = classDetail.match(/([A-Z0-9+]+)\s*-\s*[A-Z]/);
-    //         if (match) {
-    //             const fullSlot = match[1].trim();
-    //             const slots = fullSlot.split('+').map(s => s.trim()).filter(s => s);
+                const tables = document.querySelectorAll('table.w3-table-all');
+                let injected = false;
                 
-    //             const course = {
-    //                 name: courseDetail.split(' - ')[1] || courseDetail,
-    //                 code: courseDetail.split(' - ')[0] || courseDetail,
-    //                 slots: slots,
-    //                 fullSlot: fullSlot
-    //             };
+                tables.forEach(table => {
+                    const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent.trim());
+                    const hasCourseDetail = headers.some(h => h.includes('COURSE DETAIL'));
+                    const hasFaculty = headers.some(h => h.includes('Faculty'));
+                    
+                    if (!hasCourseDetail || !hasFaculty) return;
 
-    //             registeredCourses.push(course);
-    //             console.log(`[FFCS] ✓ ${course.code} (${fullSlot}) slots: ${slots.join(', ')}`);
-    //         } else {
-    //             console.log(`[FFCS] ✗ No match for: "${classDetail}"`);
-    //         }
-    //     });
+                    const facultyColIndex = headers.indexOf('Faculty');
+                    if (facultyColIndex === -1) return;
 
-    //     console.log('[FFCS] Total courses:', registeredCourses.length);
-    //     console.log('[FFCS] Registered slots:', registeredCourses.map(c => c.fullSlot).join(', '));
-    // }
+                    const rows = table.querySelectorAll('tr');
+                    rows.forEach((row, idx) => {
+                        if (idx === 0) return; // Skip header
+                        
+                        const cells = row.querySelectorAll('td');
+                        if (cells.length <= facultyColIndex) return;
+
+                        const facultyCell = cells[facultyColIndex];
+                        if (!facultyCell) return;
+
+                        // Check if badge already exists
+                        if (facultyCell.querySelector('.faculty-rating-badge')) return;
+
+                        const facultyText = facultyCell.textContent.trim();
+                        if (!facultyText) return;
+
+                        // Extract faculty name (format: "NAME - DEPARTMENT")
+                        const facultyName = facultyText.split(' - ')[0].trim();
+                        if (!facultyName) return;
+
+                        const faculty = findFaculty(facultyName, facultyRatings);
+                        const badge = createBadge(faculty);
+                        facultyCell.appendChild(badge);
+                        injected = true;
+                    });
+                });
+
+                if (injected) {
+                    hasInjectedFacultyRatings = true;
+                }
+            });
+        }, 300);
+    }
 
     function extractRegisteredCourses() {
         registeredCourses = [];
@@ -342,6 +378,7 @@
             setTimeout(() => {
                 extractRegisteredCourses();
                 addClashInfo();
+                injectFacultyRatingsInHomePage();
                 isProcessing = false;
             }, 300);
         })
@@ -362,9 +399,9 @@
         controls.style.cssText = 'text-align:center;padding:20px;margin:20px 0;display:flex;gap:15px;justify-content:center;flex-wrap:wrap;border:2px solid #4CAF50;background:#f9f9f9;border-radius:8px;';
 
         const refreshBtn = document.createElement('button');
-        refreshBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 100 100" style="vertical-align:middle;margin-right:8px;"><path fill="#88ae45" d="M13 27A2 2 0 1 0 13 31A2 2 0 1 0 13 27Z"></path><path fill="#f1bc19" d="M77 12A1 1 0 1 0 77 14A1 1 0 1 0 77 12Z"></path><path fill="#e6edb7" d="M50 13A37 37 0 1 0 50 87A37 37 0 1 0 50 13Z"></path><path fill="#f1bc19" d="M83 11A4 4 0 1 0 83 19A4 4 0 1 0 83 11Z"></path><path fill="#88ae45" d="M87 22A2 2 0 1 0 87 26A2 2 0 1 0 87 22Z"></path><path fill="#fbcd59" d="M81 74A2 2 0 1 0 81 78 2 2 0 1 0 81 74zM15 59A4 4 0 1 0 15 67 4 4 0 1 0 15 59z"></path><path fill="#88ae45" d="M25 85A2 2 0 1 0 25 89A2 2 0 1 0 25 85Z"></path><path fill="#fff" d="M18.5 51A2.5 2.5 0 1 0 18.5 56A2.5 2.5 0 1 0 18.5 51Z"></path><path fill="#f1bc19" d="M21 66A1 1 0 1 0 21 68A1 1 0 1 0 21 66Z"></path><path fill="#fff" d="M80 33A1 1 0 1 0 80 35A1 1 0 1 0 80 33Z"></path><g><path fill="#fdfcee" d="M50 26.042A23.958 23.958 0 1 0 50 73.958A23.958 23.958 0 1 0 50 26.042Z"></path><path fill="#472b29" d="M50,26.4c13.013,0,23.6,10.587,23.6,23.6S63.013,73.6,50,73.6S26.4,63.013,26.4,50 S36.987,26.4,50,26.4 M50,25c-13.807,0-25,11.193-25,25s11.193,25,25,25s25-11.193,25-25S63.807,25,50,25L50,25z"></path><path fill="#93bc39" d="M49.999 30.374999999999996A19.626 19.626 0 1 0 49.999 69.627A19.626 19.626 0 1 0 49.999 30.374999999999996Z"></path><path fill="#b7cc6b" d="M49.999,33.375c10.333,0,18.781,7.99,19.55,18.126 c0.038-0.497,0.076-0.994,0.076-1.5c0-10.839-8.787-19.626-19.626-19.626c-10.839,0-19.626,8.787-19.626,19.626 c0,0.506,0.038,1.003,0.076,1.5C31.218,41.365,39.667,33.375,49.999,33.375z"></path><path fill="#472b29" d="M49.999,30.75c10.615,0,19.251,8.635,19.251,19.249c0,10.615-8.636,19.251-19.251,19.251 c-10.614,0-19.249-8.636-19.249-19.251C30.75,39.385,39.385,30.75,49.999,30.75 M49.999,30C38.972,30,30,38.972,30,49.999 C30,61.027,38.972,70,49.999,70C61.027,70,70,61.027,70,49.999S61.027,30,49.999,30L49.999,30z"></path></g><g><path fill="#fdfcee" d="M52.8,38h-6.3c-3.038,0-5.5,2.462-5.5,5.5v10.379l-0.82-0.82C40.141,53.02,40.089,53,40.038,53 c-0.051,0-0.103,0.02-0.141,0.059l-1.838,1.838C38.02,54.936,38,54.987,38,55.038c0,0.051,0.02,0.102,0.059,0.141l4.3,4.3 c0.078,0.078,0.205,0.078,0.283,0l4.3-4.3c0.078-0.078,0.078-0.205,0-0.283l-1.838-1.838c-0.078-0.078-0.205-0.078-0.283,0 L44,53.879V43.5c0-1.381,1.119-2.5,2.5-2.5h6.3c0.11,0,0.2-0.09,0.2-0.2v-2.6C53,38.09,52.91,38,52.8,38z"></path><path fill="#472b29" d="M52.5,38.5v2h-6c-1.654,0-3,1.346-3,3v10.379v1.207l0.854-0.854l0.608-0.608l1.414,1.414 L42.5,58.914l-3.876-3.876l1.414-1.414l0.608,0.608l0.854,0.854v-1.207V43.5c0-2.757,2.243-5,5-5H52.5 M52.8,38h-6.3 c-3.038,0-5.5,2.462-5.5,5.5v10.379l-0.82-0.82C40.141,53.02,40.089,53,40.038,53c-0.051,0-0.103,0.02-0.141,0.059l-1.838,1.838 C38.02,54.936,38,54.987,38,55.038c0,0.051,0.02,0.102,0.059,0.141l4.3,4.3c0.039,0.039,0.09,0.059,0.141,0.059 s0.102-0.02,0.141-0.059l4.3-4.3c0.078-0.078,0.078-0.205,0-0.283l-1.838-1.838C45.064,53.02,45.013,53,44.962,53 s-0.102,0.02-0.141,0.059L44,53.879V43.5c0-1.381,1.119-2.5,2.5-2.5h6.3c0.11,0,0.2-0.09,0.2-0.2v-2.6C53,38.09,52.91,38,52.8,38 L52.8,38z"></path><g><path fill="#fdfcee" d="M47.2,62h6.3c3.038,0,5.5-2.462,5.5-5.5V46.121l0.82,0.82C59.859,46.98,59.911,47,59.962,47 c0.051,0,0.103-0.02,0.141-0.059l1.838-1.838C61.98,45.064,62,45.013,62,44.962c0-0.051-0.02-0.102-0.059-0.141l-4.3-4.3 c-0.078-0.078-0.205-0.078-0.283,0l-4.3,4.3c-0.078,0.078-0.078,0.205,0,0.283l1.838,1.838c0.078,0.078,0.205,0.078,0.283,0 l0.82-0.82V56.5c0,1.381-1.119,2.5-2.5,2.5h-6.3c-0.11,0-0.2,0.09-0.2,0.2v2.6C47,61.91,47.09,62,47.2,62z"></path><path fill="#472b29" d="M57.5,41.086l3.876,3.876l-1.414,1.414l-0.608-0.608L58.5,44.914v1.207V56.5c0,2.757-2.243,5-5,5 h-6v-2h6c1.654,0,3-1.346,3-3V46.121v-1.207l-0.854,0.854l-0.608,0.608l-1.414-1.414L57.5,41.086 M57.5,40.462 c-0.051,0-0.102,0.02-0.141,0.059l-4.3,4.3c-0.078,0.078-0.078,0.205,0,0.283l1.838,1.838C54.936,46.98,54.987,47,55.038,47 s0.102-0.02,0.141-0.059l0.82-0.82V56.5c0,1.381-1.119,2.5-2.5,2.5h-6.3c-0.11,0-0.2,0.09-0.2,0.2v2.6c0,0.11,0.09,0.2,0.2,0.2 h6.3c3.038,0,5.5-2.462,5.5-5.5V46.121l0.82,0.82C59.859,46.98,59.911,47,59.962,47c0.051,0,0.103-0.02,0.141-0.059l1.838-1.838 C61.98,45.064,62,45.013,62,44.962c0-0.051-0.02-0.102-0.059-0.141l-4.3-4.3C57.602,40.481,57.551,40.462,57.5,40.462L57.5,40.462 z"></path></g></g></svg>Refresh';
         refreshBtn.style.cssText = 'background:#4CAF50;color:white;padding:14px 28px;font-size:17px;cursor:pointer;border:none;border-radius:8px;box-shadow:0 2px 5px rgba(0,0,0,0.2);font-weight:bold;display:flex;align-items:center;';
         refreshBtn.onclick = loadTimetable;
+        refreshBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 100 100" style="vertical-align:middle;margin-right:8px;"><path fill="#88ae45" d="M13 27A2 2 0 1 0 13 31A2 2 0 1 0 13 27Z"></path><path fill="#f1bc19" d="M77 12A1 1 0 1 0 77 14A1 1 0 1 0 77 12Z"></path><path fill="#e6edb7" d="M50 13A37 37 0 1 0 50 87A37 37 0 1 0 50 13Z"></path><path fill="#f1bc19" d="M83 11A4 4 0 1 0 83 19A4 4 0 1 0 83 11Z"></path><path fill="#88ae45" d="M87 22A2 2 0 1 0 87 26A2 2 0 1 0 87 22Z"></path><path fill="#fbcd59" d="M81 74A2 2 0 1 0 81 78 2 2 0 1 0 81 74zM15 59A4 4 0 1 0 15 67 4 4 0 1 0 15 59z"></path><path fill="#88ae45" d="M25 85A2 2 0 1 0 25 89A2 2 0 1 0 25 85Z"></path><path fill="#fff" d="M18.5 51A2.5 2.5 0 1 0 18.5 56A2.5 2.5 0 1 0 18.5 51Z"></path><path fill="#f1bc19" d="M21 66A1 1 0 1 0 21 68A1 1 0 1 0 21 66Z"></path><path fill="#fff" d="M80 33A1 1 0 1 0 80 35A1 1 0 1 0 80 33Z"></path><g><path fill="#fdfcee" d="M50 26.042A23.958 23.958 0 1 0 50 73.958A23.958 23.958 0 1 0 50 26.042Z"></path><path fill="#472b29" d="M50,26.4c13.013,0,23.6,10.587,23.6,23.6S63.013,73.6,50,73.6S26.4,63.013,26.4,50 S36.987,26.4,50,26.4 M50,25c-13.807,0-25,11.193-25,25s11.193,25,25,25s25-11.193,25-25S63.807,25,50,25L50,25z"></path><path fill="#93bc39" d="M49.999 30.374999999999996A19.626 19.626 0 1 0 49.999 69.627A19.626 19.626 0 1 0 49.999 30.374999999999996Z"></path><path fill="#b7cc6b" d="M49.999,33.375c10.333,0,18.781,7.99,19.55,18.126 c0.038-0.497,0.076-0.994,0.076-1.5c0-10.839-8.787-19.626-19.626-19.626c-10.839,0-19.626,8.787-19.626,19.626 c0,0.506,0.038,1.003,0.076,1.5C31.218,41.365,39.667,33.375,49.999,33.375z"></path><path fill="#472b29" d="M49.999,30.75c10.615,0,19.251,8.635,19.251,19.249c0,10.615-8.636,19.251-19.251,19.251 c-10.614,0-19.249-8.636-19.249-19.251C30.75,39.385,39.385,30.75,49.999,30.75 M49.999,30C38.972,30,30,38.972,30,49.999 C30,61.027,38.972,70,49.999,70C61.027,70,70,61.027,70,49.999S61.027,30,49.999,30L49.999,30z"></path></g><g><path fill="#fdfcee" d="M52.8,38h-6.3c-3.038,0-5.5,2.462-5.5,5.5v10.379l-0.82-0.82C40.141,53.02,40.089,53,40.038,53 c-0.051,0-0.103,0.02-0.141,0.059l-1.838,1.838C38.02,54.936,38,54.987,38,55.038c0,0.051,0.02,0.102,0.059,0.141l4.3,4.3 c0.078,0.078,0.205,0.078,0.283,0l4.3-4.3c0.078-0.078,0.078-0.205,0-0.283l-1.838-1.838c-0.078-0.078-0.205-0.078-0.283,0 L44,53.879V43.5c0-1.381,1.119-2.5,2.5-2.5h6.3c0.11,0,0.2-0.09,0.2-0.2v-2.6C53,38.09,52.91,38,52.8,38z"></path><path fill="#472b29" d="M52.5,38.5v2h-6c-1.654,0-3,1.346-3,3v10.379v1.207l0.854-0.854l0.608-0.608l1.414,1.414 L42.5,58.914l-3.876-3.876l1.414-1.414l0.608,0.608l0.854,0.854v-1.207V43.5c0-2.757,2.243-5,5-5H52.5 M52.8,38h-6.3 c-3.038,0-5.5,2.462-5.5,5.5v10.379l-0.82-0.82C40.141,53.02,40.089,53,40.038,53c-0.051,0-0.103,0.02-0.141,0.059l-1.838,1.838 C38.02,54.936,38,54.987,38,55.038c0,0.051,0.02,0.102,0.059,0.141l4.3,4.3c0.039,0.039,0.09,0.059,0.141,0.059 s0.102-0.02,0.141-0.059l4.3-4.3c0.078-0.078,0.078-0.205,0-0.283l-1.838-1.838C45.064,53.02,45.013,53,44.962,53 s-0.102,0.02-0.141,0.059L44,53.879V43.5c0-1.381,1.119-2.5,2.5-2.5h6.3c0.11,0,0.2-0.09,0.2-0.2v-2.6C53,38.09,52.91,38,52.8,38 L52.8,38z"></path><g><path fill="#fdfcee" d="M47.2,62h6.3c3.038,0,5.5-2.462,5.5-5.5V46.121l0.82,0.82C59.859,46.98,59.911,47,59.962,47 c0.051,0,0.103-0.02,0.141-0.059l1.838-1.838C61.98,45.064,62,45.013,62,44.962c0-0.051-0.02-0.102-0.059-0.141l-4.3-4.3 c-0.078-0.078-0.205-0.078-0.283,0l-4.3,4.3c-0.078,0.078-0.078,0.205,0,0.283l1.838,1.838c0.078,0.078,0.205,0.078,0.283,0 l0.82-0.82V56.5c0,1.381-1.119,2.5-2.5,2.5h-6.3c-0.11,0-0.2,0.09-0.2,0.2v2.6C47,61.91,47.09,62,47.2,62z"></path><path fill="#472b29" d="M57.5,41.086l3.876,3.876l-1.414,1.414l-0.608-0.608L58.5,44.914v1.207V56.5c0,2.757-2.243,5-5,5 h-6v-2h6c1.654,0,3-1.346,3-3V46.121v-1.207l-0.854,0.854l-0.608,0.608l-1.414-1.414L57.5,41.086 M57.5,40.462 c-0.051,0-0.102,0.02-0.141,0.059l-4.3,4.3c-0.078,0.078-0.078,0.205,0,0.283l1.838,1.838C54.936,46.98,54.987,47,55.038,47 s0.102-0.02,0.141-0.059l0.82-0.82V56.5c0,1.381-1.119,2.5-2.5,2.5h-6.3c-0.11,0-0.2,0.09-0.2,0.2v2.6c0,0.11,0.09,0.2,0.2,0.2 h6.3c3.038,0,5.5-2.462,5.5-5.5V46.121l0.82,0.82C59.859,46.98,59.911,47,59.962,47c0.051,0,0.103-0.02,0.141-0.059l1.838-1.838 C61.98,45.064,62,45.013,62,44.962c0-0.051-0.02-0.102-0.059-0.141l-4.3-4.3C57.602,40.481,57.551,40.462,57.5,40.462L57.5,40.462 z"></path></g></g></svg>Refresh';
 
         const toggleBtn = document.createElement('button');
         toggleBtn.id = 'ffcs-toggle-btn';
@@ -406,6 +443,32 @@
             if (pageWrapper && mainForm) {
                 clearInterval(check);
                 
+                // Inject faculty ratings in home page table (always, regardless of toggle)
+                setTimeout(() => {
+                    injectFacultyRatingsInHomePage();
+                }, 500);
+
+                // Observe for changes to re-inject ratings (only if not already injected)
+                let observerTimeout;
+                new MutationObserver((mutations) => {
+                    // Only trigger if we see table changes
+                    const hasTableChanges = mutations.some(mutation => {
+                        return Array.from(mutation.addedNodes).some(node => {
+                            return node.nodeType === 1 && (
+                                node.tagName === 'TABLE' || 
+                                node.querySelector && node.querySelector('table.w3-table-all')
+                            );
+                        });
+                    });
+
+                    if (hasTableChanges) {
+                        clearTimeout(observerTimeout);
+                        observerTimeout = setTimeout(() => {
+                            injectFacultyRatingsInHomePage();
+                        }, 500);
+                    }
+                }).observe(pageWrapper, { childList: true, subtree: true });
+                
                 // Check if feature is enabled
                 chrome.storage.local.get(['multiWrapperEnabled'], result => {
                     if (result.multiWrapperEnabled === true) {
@@ -434,7 +497,21 @@
             if (req.enabled) {
                 // Enable: initialize if not already done
                 if (!document.getElementById('ffcs-controls')) {
-                    init();
+                    const pageWrapper = document.getElementById('page-wrapper');
+                    const mainForm = document.getElementById('mainPageForm');
+                    if (pageWrapper && mainForm) {
+                        createControls();
+                        createWrapper();
+                        loadTimetable();
+
+                        new MutationObserver(() => {
+                            if (!isProcessing) {
+                                setTimeout(() => {
+                                    addClashInfo();
+                                }, 500);
+                            }
+                        }).observe(pageWrapper, { childList: true, subtree: false });
+                    }
                 }
             } else {
                 // Disable: remove controls and wrapper
@@ -443,6 +520,13 @@
                 if (controls) controls.remove();
                 if (wrapper) wrapper.remove();
             }
+        }
+        
+        // Listen for faculty ratings updates
+        if (req.type === 'RATINGS_UPDATED' || req.type === 'FACULTY_RATINGS_UPDATED') {
+            setTimeout(() => {
+                injectFacultyRatingsInHomePage();
+            }, 200);
         }
     });
 

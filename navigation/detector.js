@@ -76,7 +76,7 @@ function detectPage() {
       
     if (isTimetablePage) {
       // Timetable page detected - faculty ratings will be injected by facultyRatingsInjector.js
-      console.log('Timetable page detected');
+      // Removed console.log to reduce noise
     }
   } finally {
     if (debounceHandle) {
