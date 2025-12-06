@@ -21,6 +21,7 @@
         "sidebar/sidebar.js",
         "sidebar/facultyRatings.js",
         "sidebar/ffcs.js",
+        "sidebar/ffcs2-multiWrapper.js",
         "sidebar/example.js",
         "sidebar/credentialsInjection.js",
         "navigation/facultyRatingsInjector.js"
@@ -50,7 +51,8 @@
         "navigation/nav.js",
         "navigation/detector.js",
         "navigation/facultyRatingsInjector.js",
-        "sidebar/ffcs.js"
+        "sidebar/ffcs.js",
+        "sidebar/ffcs2-multiWrapper.js"
       ]
     }
   ]

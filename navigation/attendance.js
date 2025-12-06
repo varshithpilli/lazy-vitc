@@ -4,6 +4,7 @@ let view_attendance_page = () => {
     if (!table) return;
 
     let thead = table.querySelector("thead tr");
+    if (!thead) return;
     let headers = Array.from(thead.children);
 
     // Find columns by name (case-insensitive)
