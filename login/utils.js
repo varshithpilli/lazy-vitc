@@ -109,6 +109,9 @@ function ChennaiBlocks(im) {
 };
 
 const addCredits = function (box) {
+  // Check if box exists and has children
+  if (!box || !box.children) return;
+  
   const strings = [
     "Filled by yours truly",
     "Thank me later",
@@ -119,7 +122,8 @@ const addCredits = function (box) {
   ]
   let string = strings[Math.floor(Math.random() * strings.length)]
 
-  if (box.children[box.children.length - 1].innerHTML != string) {
+  // Check if box has children before accessing them
+  if (box.children.length > 0 && box.children[box.children.length - 1].innerHTML != string) {
     var para = document.createElement("p");
     para.innerHTML = string;
     para.style.cssText = "font-size: 12px; text-align: center;";

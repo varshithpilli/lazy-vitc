@@ -27,8 +27,11 @@ const solveChennai = (img, textBox, callback) => {
         out += label_txt[block];
       }
       textBox.value = out.trim();
-      var box = document.getElementsByClassName("row")[1];
-      addCredits(box);
+      var boxElements = document.getElementsByClassName("row");
+      if (boxElements && boxElements.length > 1) {
+        var box = boxElements[1];
+        addCredits(box);
+      }
       
       if (callback) callback();
     });
@@ -50,15 +53,19 @@ const tryUrls = () => {
   
   if (document.URL.match("vtopcc.vit.ac.in")) {
     handleVtopCaptcha(false);
-  } else if (document.URL.match("vtopregcc.vit.ac.in")) {
+  }
+
+  else if (document.URL.match("https://vtopregcc.vit.ac.in/RegistrationNew/")) {
     handleFFCSCaptcha(false);
   }
 }
 
 function handleVtopCaptcha(autoSubmit) {
-  let img = document.getElementById("captchaBlock")?.children[0];
+  let captchaBlock = document.getElementById("captchaBlock");
+  let img = captchaBlock && captchaBlock.children ? captchaBlock.children[0] : null;
   if (!img) {
-    img = document.getElementsByClassName("form-control bg-light border-0")[0];
+    let formControls = document.getElementsByClassName("form-control bg-light border-0");
+    img = formControls && formControls.length > 0 ? formControls[0] : null;
   }
   let textBox = document.getElementById("captchaStr");
   
@@ -82,9 +89,11 @@ function handleVtopCaptcha(autoSubmit) {
   if (!container) return;
   
   container.addEventListener('DOMSubtreeModified', () => {
-    img = document.getElementById("captchaBlock")?.children[0];
+    let captchaBlock = document.getElementById("captchaBlock");
+    img = captchaBlock && captchaBlock.children ? captchaBlock.children[0] : null;
     if (!img) {
-      img = document.getElementsByClassName("form-control bg-light border-0")[0];
+      let formControls = document.getElementsByClassName("form-control bg-light border-0");
+      img = formControls && formControls.length > 0 ? formControls[0] : null;
     }
     if (!img) return;
     
