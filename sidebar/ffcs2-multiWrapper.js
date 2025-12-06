@@ -1,8 +1,6 @@
 (function () {
     'use strict';
 
-    console.log('[FFCS] Script initialized');
-
     let registeredCourses = [];
     let showClashStatus = true;
     let isProcessing = false;
@@ -140,14 +138,12 @@
     // }
 
     function extractRegisteredCourses() {
-        console.log('[FFCS] Extracting registered courses...');
         registeredCourses = [];
 
         const wrapper = document.getElementById('page-wrapper-timetable');
         if (!wrapper) return;
 
         const tables = wrapper.querySelectorAll('table.w3-table-all');
-        console.log('[FFCS] Found tables:', tables.length);
 
         let registeredTable = null;
         for (let table of tables) {
@@ -157,35 +153,27 @@
             }
         }
 
-        if (!registeredTable) {
-            console.log('[FFCS] ❗ Class Detail table not found');
-            return;
-        }
+        if (!registeredTable) return;
 
         const tbody = registeredTable.querySelector('tbody');
         if (!tbody) return;
 
         const rows = tbody.querySelectorAll('tr');
-        console.log('[FFCS] Found rows:', rows.length);
 
-        rows.forEach((row, idx) => {
+        rows.forEach((row) => {
             const cells = row.querySelectorAll('td');
             if (cells.length < 7) return;
 
             const courseDetail = cells[1]?.textContent?.trim();
             const classDetail = cells[6]?.textContent?.trim().replace(/\s+/g, ' ');
 
-            console.log(`[FFCS] Row ${idx}: "${courseDetail?.substring(0, 15)}" -> "${classDetail}"`);
-
             if (!courseDetail || !classDetail) return;
 
-            // Split strict VTOP structure: REGID - SLOT - ROOM
             const parts = classDetail.split(' - ').map(p => p.trim());
             const regId   = parts[0] || "";
             const slotStr = parts[1] || "";
             const room    = parts[2] || "";
 
-            // handle NIL
             const slots = (slotStr === "NIL") 
                 ? [] 
                 : slotStr.split('+').map(s => s.trim()).filter(Boolean);
@@ -200,11 +188,7 @@
             };
 
             registeredCourses.push(course);
-            console.log(`[FFCS] ✓ ${course.code} slots: ${slots.join(', ') || 'NIL'} (${slotStr})`);
         });
-
-        console.log('[FFCS] Total courses:', registeredCourses.length);
-        console.log('[FFCS] Registered slots:', registeredCourses.map(c => c.fullSlot).join(', '));
     }
 
 
@@ -212,8 +196,6 @@
         const checkSlots = slotString.split('+').map(s => s.trim()).filter(s => s);
         const clashes = [];
         const seen = new Set();
-
-        console.log(`[FFCS] Checking "${slotString}" -> [${checkSlots.join(', ')}]`);
 
         for (let course of registeredCourses) {
             for (let regSlot of course.slots) {
@@ -229,7 +211,6 @@
                                 checkingSlot: checkSlot,
                                 fullSlot: course.fullSlot
                             });
-                            console.log(`[FFCS]   ⚠ Clash: ${regSlot} (${course.code}) ↔ ${checkSlot}`);
                         }
                         break;
                     }
@@ -241,20 +222,16 @@
     }
 
     function addClashInfo() {
-        console.log('[FFCS] Adding clash info...');
-        
         const pageWrapper = document.getElementById('page-wrapper');
         if (!pageWrapper) return;
 
         const tables = pageWrapper.querySelectorAll('table.w3-table-all');
-        console.log('[FFCS] Found tables:', tables.length);
 
-        tables.forEach((table, tableIdx) => {
+        tables.forEach((table) => {
             const allRows = table.querySelectorAll('thead tr, tbody tr');
             
-            // Find header
             let headerRow = null;
-            let slotIdx = -1, venueIdx = -1, facultyIdx = -1;
+            let slotIdx = -1, facultyIdx = -1;
 
             for (let row of allRows) {
                 const cells = row.querySelectorAll('th');
@@ -262,12 +239,10 @@
                     const headers = Array.from(cells).map(th => th.textContent.trim());
                     
                     slotIdx = headers.indexOf('Slot');
-                    venueIdx = headers.indexOf('Venue');
                     facultyIdx = headers.indexOf('Faculty');
                     
                     if (slotIdx >= 0 && facultyIdx >= 0) {
                         headerRow = row;
-                        console.log(`[FFCS] Table ${tableIdx}: Found header`);
                         break;
                     }
                 }
@@ -276,9 +251,8 @@
             if (!headerRow) return;
 
             let startProcessing = false;
-            let processed = 0;
 
-            allRows.forEach((row, rowIdx) => {
+            allRows.forEach((row) => {
                 if (row === headerRow) {
                     startProcessing = true;
                     return;
@@ -300,7 +274,6 @@
 
                 if (!slot) return;
 
-                // Store original
                 if (!slotCell.dataset.original) {
                     slotCell.dataset.original = slotCell.innerHTML;
                 }
@@ -315,33 +288,27 @@
                 const original = slotCell.dataset.original;
 
                 if (clashes.length === 0) {
-                    // No clash - light green row
                     row.style.backgroundColor = '#d4edda';
-                    slotCell.innerHTML = `${original}<br><span style="color:#155724;font-weight:bold;font-size:11px;">✓ No Clash</span>`;
+                    slotCell.innerHTML = `${original}<br><span style="color:#155724;font-weight:bold;font-size:11px;">No Clash</span>`;
                 } else {
-                    // Clash - light red row
                     row.style.backgroundColor = '#f8d7da';
                     const details = clashes.map(c => `${c.courseCode}`).join(', ');
-                    slotCell.innerHTML = `${original}<br><span style="color:#721c24;font-weight:bold;font-size:10px;">⚠ ${details}</span>`;
+                    slotCell.innerHTML = `${original}<br><span style="color:#721c24;font-weight:bold;font-size:10px;">${details}</span>`;
                     slotCell.title = clashes.map(c => 
                         `CLASH: ${c.courseName} (${c.courseCode})\nYour slot: ${c.fullSlot}\nConflict: ${c.conflictSlot} ↔ ${c.checkingSlot}`
                     ).join('\n\n');
                 }
-
-                processed++;
             });
-
-            console.log(`[FFCS] Table ${tableIdx}: Processed ${processed} rows`);
         });
     }
 
     function toggleClash() {
         showClashStatus = !showClashStatus;
-        console.log('[FFCS] Clash:', showClashStatus ? 'ON' : 'OFF');
         
         const btn = document.getElementById('ffcs-toggle-btn');
         if (btn) {
-            btn.textContent = showClashStatus ? '🔍 Hide Clash' : '🔍 Show Clash';
+            const svgIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 100 100" style="vertical-align:middle;margin-right:8px;"><path fill="#88ae45" d="M13 27A2 2 0 1 0 13 31A2 2 0 1 0 13 27Z"></path><path fill="#f1bc19" d="M77 12A1 1 0 1 0 77 14A1 1 0 1 0 77 12Z"></path><path fill="#e6edb7" d="M50 13A37 37 0 1 0 50 87A37 37 0 1 0 50 13Z"></path><path fill="#f1bc19" d="M83 11A4 4 0 1 0 83 19A4 4 0 1 0 83 11Z"></path><path fill="#88ae45" d="M87 22A2 2 0 1 0 87 26A2 2 0 1 0 87 22Z"></path><path fill="#fbcd59" d="M81 74A2 2 0 1 0 81 78 2 2 0 1 0 81 74zM15 59A4 4 0 1 0 15 67 4 4 0 1 0 15 59z"></path><path fill="#88ae45" d="M25 85A2 2 0 1 0 25 89A2 2 0 1 0 25 85Z"></path><path fill="#fff" d="M18.5 51A2.5 2.5 0 1 0 18.5 56A2.5 2.5 0 1 0 18.5 51Z"></path><path fill="#f1bc19" d="M21 66A1 1 0 1 0 21 68A1 1 0 1 0 21 66Z"></path><path fill="#fff" d="M80 33A1 1 0 1 0 80 35A1 1 0 1 0 80 33Z"></path><g><path fill="#fdfcee" d="M50 26.042A23.958 23.958 0 1 0 50 73.958A23.958 23.958 0 1 0 50 26.042Z"></path><path fill="#472b29" d="M50,26.4c13.013,0,23.6,10.587,23.6,23.6S63.013,73.6,50,73.6S26.4,63.013,26.4,50 S36.987,26.4,50,26.4 M50,25c-13.807,0-25,11.193-25,25s11.193,25,25,25s25-11.193,25-25S63.807,25,50,25L50,25z"></path><path fill="#93bc39" d="M49.999 30.374999999999996A19.626 19.626 0 1 0 49.999 69.627A19.626 19.626 0 1 0 49.999 30.374999999999996Z"></path><path fill="#b7cc6b" d="M49.999,33.375c10.333,0,18.781,7.99,19.55,18.126 c0.038-0.497,0.076-0.994,0.076-1.5c0-10.839-8.787-19.626-19.626-19.626c-10.839,0-19.626,8.787-19.626,19.626 c0,0.506,0.038,1.003,0.076,1.5C31.218,41.365,39.667,33.375,49.999,33.375z"></path><path fill="#472b29" d="M49.999,30.75c10.615,0,19.251,8.635,19.251,19.249c0,10.615-8.636,19.251-19.251,19.251 c-10.614,0-19.249-8.636-19.249-19.251C30.75,39.385,39.385,30.75,49.999,30.75 M49.999,30C38.972,30,30,38.972,30,49.999 C30,61.027,38.972,70,49.999,70C61.027,70,70,61.027,70,49.999S61.027,30,49.999,30L49.999,30z"></path></g><g><path fill="#fdfcee" d="M52.8,38h-6.3c-3.038,0-5.5,2.462-5.5,5.5v10.379l-0.82-0.82C40.141,53.02,40.089,53,40.038,53 c-0.051,0-0.103,0.02-0.141,0.059l-1.838,1.838C38.02,54.936,38,54.987,38,55.038c0,0.051,0.02,0.102,0.059,0.141l4.3,4.3 c0.078,0.078,0.205,0.078,0.283,0l4.3-4.3c0.078-0.078,0.078-0.205,0-0.283l-1.838-1.838c-0.078-0.078-0.205-0.078-0.283,0 L44,53.879V43.5c0-1.381,1.119-2.5,2.5-2.5h6.3c0.11,0,0.2-0.09,0.2-0.2v-2.6C53,38.09,52.91,38,52.8,38z"></path><path fill="#472b29" d="M52.5,38.5v2h-6c-1.654,0-3,1.346-3,3v10.379v1.207l0.854-0.854l0.608-0.608l1.414,1.414 L42.5,58.914l-3.876-3.876l1.414-1.414l0.608,0.608l0.854,0.854v-1.207V43.5c0-2.757,2.243-5,5-5H52.5 M52.8,38h-6.3 c-3.038,0-5.5,2.462-5.5,5.5v10.379l-0.82-0.82C40.141,53.02,40.089,53,40.038,53c-0.051,0-0.103,0.02-0.141,0.059l-1.838,1.838 C38.02,54.936,38,54.987,38,55.038c0,0.051,0.02,0.102,0.059,0.141l4.3,4.3c0.039,0.039,0.09,0.059,0.141,0.059 s0.102-0.02,0.141-0.059l4.3-4.3c0.078-0.078,0.078-0.205,0-0.283l-1.838-1.838C45.064,53.02,45.013,53,44.962,53 s-0.102,0.02-0.141,0.059L44,53.879V43.5c0-1.381,1.119-2.5,2.5-2.5h6.3c0.11,0,0.2-0.09,0.2-0.2v-2.6C53,38.09,52.91,38,52.8,38 L52.8,38z"></path><g><path fill="#fdfcee" d="M47.2,62h6.3c3.038,0,5.5-2.462,5.5-5.5V46.121l0.82,0.82C59.859,46.98,59.911,47,59.962,47 c0.051,0,0.103-0.02,0.141-0.059l1.838-1.838C61.98,45.064,62,45.013,62,44.962c0-0.051-0.02-0.102-0.059-0.141l-4.3-4.3 c-0.078-0.078-0.205-0.078-0.283,0l-4.3,4.3c-0.078,0.078-0.078,0.205,0,0.283l1.838,1.838c0.078,0.078,0.205,0.078,0.283,0 l0.82-0.82V56.5c0,1.381-1.119,2.5-2.5,2.5h-6.3c-0.11,0-0.2,0.09-0.2,0.2v2.6C47,61.91,47.09,62,47.2,62z"></path><path fill="#472b29" d="M57.5,41.086l3.876,3.876l-1.414,1.414l-0.608-0.608L58.5,44.914v1.207V56.5c0,2.757-2.243,5-5,5 h-6v-2h6c1.654,0,3-1.346,3-3V46.121v-1.207l-0.854,0.854l-0.608,0.608l-1.414-1.414L57.5,41.086 M57.5,40.462 c-0.051,0-0.102,0.02-0.141,0.059l-4.3,4.3c-0.078,0.078-0.078,0.205,0,0.283l1.838,1.838C54.936,46.98,54.987,47,55.038,47 s0.102-0.02,0.141-0.059l0.82-0.82V56.5c0,1.381-1.119,2.5-2.5,2.5h-6.3c-0.11,0-0.2,0.09-0.2,0.2v2.6c0,0.11,0.09,0.2,0.2,0.2 h6.3c3.038,0,5.5-2.462,5.5-5.5V46.121l0.82,0.82C59.859,46.98,59.911,47,59.962,47c0.051,0,0.103-0.02,0.141-0.059l1.838-1.838 C61.98,45.064,62,45.013,62,44.962c0-0.051-0.02-0.102-0.059-0.141l-4.3-4.3C57.602,40.481,57.551,40.462,57.5,40.462L57.5,40.462 z"></path></g></g></svg>';
+            btn.innerHTML = showClashStatus ? svgIcon + 'Hide Clash' : svgIcon + 'Show Clash';
             btn.style.backgroundColor = showClashStatus ? '#ff9800' : '#4CAF50';
         }
         
@@ -351,7 +318,6 @@
     function loadTimetable() {
         if (isProcessing) return;
 
-        console.log('[FFCS] Loading timetable...');
         isProcessing = true;
 
         const wrapper = document.getElementById('page-wrapper-timetable');
@@ -372,7 +338,6 @@
         .then(res => res.text())
         .then(html => {
             wrapper.innerHTML = html;
-            console.log('[FFCS] Timetable loaded');
             
             setTimeout(() => {
                 extractRegisteredCourses();
@@ -380,8 +345,7 @@
                 isProcessing = false;
             }, 300);
         })
-        .catch(err => {
-            console.error('[FFCS] Error:', err);
+        .catch(() => {
             wrapper.innerHTML = '<div style="color:red;padding:20px;text-align:center;">Error loading</div>';
             isProcessing = false;
         });
@@ -393,28 +357,25 @@
         const pageWrapper = document.getElementById('page-wrapper');
         if (!pageWrapper) return;
 
-        console.log('[FFCS] Creating controls...');
-
         const controls = document.createElement('div');
         controls.id = 'ffcs-controls';
         controls.style.cssText = 'text-align:center;padding:20px;margin:20px 0;display:flex;gap:15px;justify-content:center;flex-wrap:wrap;border:2px solid #4CAF50;background:#f9f9f9;border-radius:8px;';
 
         const refreshBtn = document.createElement('button');
-        refreshBtn.textContent = '🔄 Refresh Timetable';
-        refreshBtn.style.cssText = 'background:#4CAF50;color:white;padding:14px 28px;font-size:17px;cursor:pointer;border:none;border-radius:8px;box-shadow:0 2px 5px rgba(0,0,0,0.2);font-weight:bold;';
+        refreshBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 100 100" style="vertical-align:middle;margin-right:8px;"><path fill="#88ae45" d="M13 27A2 2 0 1 0 13 31A2 2 0 1 0 13 27Z"></path><path fill="#f1bc19" d="M77 12A1 1 0 1 0 77 14A1 1 0 1 0 77 12Z"></path><path fill="#e6edb7" d="M50 13A37 37 0 1 0 50 87A37 37 0 1 0 50 13Z"></path><path fill="#f1bc19" d="M83 11A4 4 0 1 0 83 19A4 4 0 1 0 83 11Z"></path><path fill="#88ae45" d="M87 22A2 2 0 1 0 87 26A2 2 0 1 0 87 22Z"></path><path fill="#fbcd59" d="M81 74A2 2 0 1 0 81 78 2 2 0 1 0 81 74zM15 59A4 4 0 1 0 15 67 4 4 0 1 0 15 59z"></path><path fill="#88ae45" d="M25 85A2 2 0 1 0 25 89A2 2 0 1 0 25 85Z"></path><path fill="#fff" d="M18.5 51A2.5 2.5 0 1 0 18.5 56A2.5 2.5 0 1 0 18.5 51Z"></path><path fill="#f1bc19" d="M21 66A1 1 0 1 0 21 68A1 1 0 1 0 21 66Z"></path><path fill="#fff" d="M80 33A1 1 0 1 0 80 35A1 1 0 1 0 80 33Z"></path><g><path fill="#fdfcee" d="M50 26.042A23.958 23.958 0 1 0 50 73.958A23.958 23.958 0 1 0 50 26.042Z"></path><path fill="#472b29" d="M50,26.4c13.013,0,23.6,10.587,23.6,23.6S63.013,73.6,50,73.6S26.4,63.013,26.4,50 S36.987,26.4,50,26.4 M50,25c-13.807,0-25,11.193-25,25s11.193,25,25,25s25-11.193,25-25S63.807,25,50,25L50,25z"></path><path fill="#93bc39" d="M49.999 30.374999999999996A19.626 19.626 0 1 0 49.999 69.627A19.626 19.626 0 1 0 49.999 30.374999999999996Z"></path><path fill="#b7cc6b" d="M49.999,33.375c10.333,0,18.781,7.99,19.55,18.126 c0.038-0.497,0.076-0.994,0.076-1.5c0-10.839-8.787-19.626-19.626-19.626c-10.839,0-19.626,8.787-19.626,19.626 c0,0.506,0.038,1.003,0.076,1.5C31.218,41.365,39.667,33.375,49.999,33.375z"></path><path fill="#472b29" d="M49.999,30.75c10.615,0,19.251,8.635,19.251,19.249c0,10.615-8.636,19.251-19.251,19.251 c-10.614,0-19.249-8.636-19.249-19.251C30.75,39.385,39.385,30.75,49.999,30.75 M49.999,30C38.972,30,30,38.972,30,49.999 C30,61.027,38.972,70,49.999,70C61.027,70,70,61.027,70,49.999S61.027,30,49.999,30L49.999,30z"></path></g><g><path fill="#fdfcee" d="M52.8,38h-6.3c-3.038,0-5.5,2.462-5.5,5.5v10.379l-0.82-0.82C40.141,53.02,40.089,53,40.038,53 c-0.051,0-0.103,0.02-0.141,0.059l-1.838,1.838C38.02,54.936,38,54.987,38,55.038c0,0.051,0.02,0.102,0.059,0.141l4.3,4.3 c0.078,0.078,0.205,0.078,0.283,0l4.3-4.3c0.078-0.078,0.078-0.205,0-0.283l-1.838-1.838c-0.078-0.078-0.205-0.078-0.283,0 L44,53.879V43.5c0-1.381,1.119-2.5,2.5-2.5h6.3c0.11,0,0.2-0.09,0.2-0.2v-2.6C53,38.09,52.91,38,52.8,38z"></path><path fill="#472b29" d="M52.5,38.5v2h-6c-1.654,0-3,1.346-3,3v10.379v1.207l0.854-0.854l0.608-0.608l1.414,1.414 L42.5,58.914l-3.876-3.876l1.414-1.414l0.608,0.608l0.854,0.854v-1.207V43.5c0-2.757,2.243-5,5-5H52.5 M52.8,38h-6.3 c-3.038,0-5.5,2.462-5.5,5.5v10.379l-0.82-0.82C40.141,53.02,40.089,53,40.038,53c-0.051,0-0.103,0.02-0.141,0.059l-1.838,1.838 C38.02,54.936,38,54.987,38,55.038c0,0.051,0.02,0.102,0.059,0.141l4.3,4.3c0.039,0.039,0.09,0.059,0.141,0.059 s0.102-0.02,0.141-0.059l4.3-4.3c0.078-0.078,0.078-0.205,0-0.283l-1.838-1.838C45.064,53.02,45.013,53,44.962,53 s-0.102,0.02-0.141,0.059L44,53.879V43.5c0-1.381,1.119-2.5,2.5-2.5h6.3c0.11,0,0.2-0.09,0.2-0.2v-2.6C53,38.09,52.91,38,52.8,38 L52.8,38z"></path><g><path fill="#fdfcee" d="M47.2,62h6.3c3.038,0,5.5-2.462,5.5-5.5V46.121l0.82,0.82C59.859,46.98,59.911,47,59.962,47 c0.051,0,0.103-0.02,0.141-0.059l1.838-1.838C61.98,45.064,62,45.013,62,44.962c0-0.051-0.02-0.102-0.059-0.141l-4.3-4.3 c-0.078-0.078-0.205-0.078-0.283,0l-4.3,4.3c-0.078,0.078-0.078,0.205,0,0.283l1.838,1.838c0.078,0.078,0.205,0.078,0.283,0 l0.82-0.82V56.5c0,1.381-1.119,2.5-2.5,2.5h-6.3c-0.11,0-0.2,0.09-0.2,0.2v2.6C47,61.91,47.09,62,47.2,62z"></path><path fill="#472b29" d="M57.5,41.086l3.876,3.876l-1.414,1.414l-0.608-0.608L58.5,44.914v1.207V56.5c0,2.757-2.243,5-5,5 h-6v-2h6c1.654,0,3-1.346,3-3V46.121v-1.207l-0.854,0.854l-0.608,0.608l-1.414-1.414L57.5,41.086 M57.5,40.462 c-0.051,0-0.102,0.02-0.141,0.059l-4.3,4.3c-0.078,0.078-0.078,0.205,0,0.283l1.838,1.838C54.936,46.98,54.987,47,55.038,47 s0.102-0.02,0.141-0.059l0.82-0.82V56.5c0,1.381-1.119,2.5-2.5,2.5h-6.3c-0.11,0-0.2,0.09-0.2,0.2v2.6c0,0.11,0.09,0.2,0.2,0.2 h6.3c3.038,0,5.5-2.462,5.5-5.5V46.121l0.82,0.82C59.859,46.98,59.911,47,59.962,47c0.051,0,0.103-0.02,0.141-0.059l1.838-1.838 C61.98,45.064,62,45.013,62,44.962c0-0.051-0.02-0.102-0.059-0.141l-4.3-4.3C57.602,40.481,57.551,40.462,57.5,40.462L57.5,40.462 z"></path></g></g></svg>Refresh';
+        refreshBtn.style.cssText = 'background:#4CAF50;color:white;padding:14px 28px;font-size:17px;cursor:pointer;border:none;border-radius:8px;box-shadow:0 2px 5px rgba(0,0,0,0.2);font-weight:bold;display:flex;align-items:center;';
         refreshBtn.onclick = loadTimetable;
 
         const toggleBtn = document.createElement('button');
         toggleBtn.id = 'ffcs-toggle-btn';
-        toggleBtn.textContent = '🔍 Hide Clash';
-        toggleBtn.style.cssText = 'background:#ff9800;color:white;padding:14px 28px;font-size:17px;cursor:pointer;border:none;border-radius:8px;box-shadow:0 2px 5px rgba(0,0,0,0.2);font-weight:bold;';
+        toggleBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 100 100" style="vertical-align:middle;margin-right:8px;"><path fill="#88ae45" d="M13 27A2 2 0 1 0 13 31A2 2 0 1 0 13 27Z"></path><path fill="#f1bc19" d="M77 12A1 1 0 1 0 77 14A1 1 0 1 0 77 12Z"></path><path fill="#e6edb7" d="M50 13A37 37 0 1 0 50 87A37 37 0 1 0 50 13Z"></path><path fill="#f1bc19" d="M83 11A4 4 0 1 0 83 19A4 4 0 1 0 83 11Z"></path><path fill="#88ae45" d="M87 22A2 2 0 1 0 87 26A2 2 0 1 0 87 22Z"></path><path fill="#fbcd59" d="M81 74A2 2 0 1 0 81 78 2 2 0 1 0 81 74zM15 59A4 4 0 1 0 15 67 4 4 0 1 0 15 59z"></path><path fill="#88ae45" d="M25 85A2 2 0 1 0 25 89A2 2 0 1 0 25 85Z"></path><path fill="#fff" d="M18.5 51A2.5 2.5 0 1 0 18.5 56A2.5 2.5 0 1 0 18.5 51Z"></path><path fill="#f1bc19" d="M21 66A1 1 0 1 0 21 68A1 1 0 1 0 21 66Z"></path><path fill="#fff" d="M80 33A1 1 0 1 0 80 35A1 1 0 1 0 80 33Z"></path><g><path fill="#fdfcee" d="M50 26.042A23.958 23.958 0 1 0 50 73.958A23.958 23.958 0 1 0 50 26.042Z"></path><path fill="#472b29" d="M50,26.4c13.013,0,23.6,10.587,23.6,23.6S63.013,73.6,50,73.6S26.4,63.013,26.4,50 S36.987,26.4,50,26.4 M50,25c-13.807,0-25,11.193-25,25s11.193,25,25,25s25-11.193,25-25S63.807,25,50,25L50,25z"></path><path fill="#93bc39" d="M49.999 30.374999999999996A19.626 19.626 0 1 0 49.999 69.627A19.626 19.626 0 1 0 49.999 30.374999999999996Z"></path><path fill="#b7cc6b" d="M49.999,33.375c10.333,0,18.781,7.99,19.55,18.126 c0.038-0.497,0.076-0.994,0.076-1.5c0-10.839-8.787-19.626-19.626-19.626c-10.839,0-19.626,8.787-19.626,19.626 c0,0.506,0.038,1.003,0.076,1.5C31.218,41.365,39.667,33.375,49.999,33.375z"></path><path fill="#472b29" d="M49.999,30.75c10.615,0,19.251,8.635,19.251,19.249c0,10.615-8.636,19.251-19.251,19.251 c-10.614,0-19.249-8.636-19.249-19.251C30.75,39.385,39.385,30.75,49.999,30.75 M49.999,30C38.972,30,30,38.972,30,49.999 C30,61.027,38.972,70,49.999,70C61.027,70,70,61.027,70,49.999S61.027,30,49.999,30L49.999,30z"></path></g><g><path fill="#fdfcee" d="M52.8,38h-6.3c-3.038,0-5.5,2.462-5.5,5.5v10.379l-0.82-0.82C40.141,53.02,40.089,53,40.038,53 c-0.051,0-0.103,0.02-0.141,0.059l-1.838,1.838C38.02,54.936,38,54.987,38,55.038c0,0.051,0.02,0.102,0.059,0.141l4.3,4.3 c0.078,0.078,0.205,0.078,0.283,0l4.3-4.3c0.078-0.078,0.078-0.205,0-0.283l-1.838-1.838c-0.078-0.078-0.205-0.078-0.283,0 L44,53.879V43.5c0-1.381,1.119-2.5,2.5-2.5h6.3c0.11,0,0.2-0.09,0.2-0.2v-2.6C53,38.09,52.91,38,52.8,38z"></path><path fill="#472b29" d="M52.5,38.5v2h-6c-1.654,0-3,1.346-3,3v10.379v1.207l0.854-0.854l0.608-0.608l1.414,1.414 L42.5,58.914l-3.876-3.876l1.414-1.414l0.608,0.608l0.854,0.854v-1.207V43.5c0-2.757,2.243-5,5-5H52.5 M52.8,38h-6.3 c-3.038,0-5.5,2.462-5.5,5.5v10.379l-0.82-0.82C40.141,53.02,40.089,53,40.038,53c-0.051,0-0.103,0.02-0.141,0.059l-1.838,1.838 C38.02,54.936,38,54.987,38,55.038c0,0.051,0.02,0.102,0.059,0.141l4.3,4.3c0.039,0.039,0.09,0.059,0.141,0.059 s0.102-0.02,0.141-0.059l4.3-4.3c0.078-0.078,0.078-0.205,0-0.283l-1.838-1.838C45.064,53.02,45.013,53,44.962,53 s-0.102,0.02-0.141,0.059L44,53.879V43.5c0-1.381,1.119-2.5,2.5-2.5h6.3c0.11,0,0.2-0.09,0.2-0.2v-2.6C53,38.09,52.91,38,52.8,38 L52.8,38z"></path><g><path fill="#fdfcee" d="M47.2,62h6.3c3.038,0,5.5-2.462,5.5-5.5V46.121l0.82,0.82C59.859,46.98,59.911,47,59.962,47 c0.051,0,0.103-0.02,0.141-0.059l1.838-1.838C61.98,45.064,62,45.013,62,44.962c0-0.051-0.02-0.102-0.059-0.141l-4.3-4.3 c-0.078-0.078-0.205-0.078-0.283,0l-4.3,4.3c-0.078,0.078-0.078,0.205,0,0.283l1.838,1.838c0.078,0.078,0.205,0.078,0.283,0 l0.82-0.82V56.5c0,1.381-1.119,2.5-2.5,2.5h-6.3c-0.11,0-0.2,0.09-0.2,0.2v2.6C47,61.91,47.09,62,47.2,62z"></path><path fill="#472b29" d="M57.5,41.086l3.876,3.876l-1.414,1.414l-0.608-0.608L58.5,44.914v1.207V56.5c0,2.757-2.243,5-5,5 h-6v-2h6c1.654,0,3-1.346,3-3V46.121v-1.207l-0.854,0.854l-0.608,0.608l-1.414-1.414L57.5,41.086 M57.5,40.462 c-0.051,0-0.102,0.02-0.141,0.059l-4.3,4.3c-0.078,0.078-0.078,0.205,0,0.283l1.838,1.838C54.936,46.98,54.987,47,55.038,47 s0.102-0.02,0.141-0.059l0.82-0.82V56.5c0,1.381-1.119,2.5-2.5,2.5h-6.3c-0.11,0-0.2,0.09-0.2,0.2v2.6c0,0.11,0.09,0.2,0.2,0.2 h6.3c3.038,0,5.5-2.462,5.5-5.5V46.121l0.82,0.82C59.859,46.98,59.911,47,59.962,47c0.051,0,0.103-0.02,0.141-0.059l1.838-1.838 C61.98,45.064,62,45.013,62,44.962c0-0.051-0.02-0.102-0.059-0.141l-4.3-4.3C57.602,40.481,57.551,40.462,57.5,40.462L57.5,40.462 z"></path></g></g></svg>Hide Clash';
+        toggleBtn.style.cssText = 'background:#ff9800;color:white;padding:14px 28px;font-size:17px;cursor:pointer;border:none;border-radius:8px;box-shadow:0 2px 5px rgba(0,0,0,0.2);font-weight:bold;display:flex;align-items:center;';
         toggleBtn.onclick = toggleClash;
 
         controls.appendChild(refreshBtn);
         controls.appendChild(toggleBtn);
 
         pageWrapper.parentNode.insertBefore(controls, pageWrapper.nextSibling);
-        console.log('[FFCS] Controls created');
     }
 
     function createWrapper() {
@@ -438,33 +399,52 @@
     function init() {
         if (!location.href.includes('vtopregcc.vit.ac.in')) return;
 
-        console.log('[FFCS] Initializing...');
-
         const check = setInterval(() => {
             const pageWrapper = document.getElementById('page-wrapper');
             const mainForm = document.getElementById('mainPageForm');
 
             if (pageWrapper && mainForm) {
                 clearInterval(check);
-                console.log('[FFCS] DOM ready');
                 
-                createControls();
-                createWrapper();
-                loadTimetable();
+                // Check if feature is enabled
+                chrome.storage.local.get(['multiWrapperEnabled'], result => {
+                    if (result.multiWrapperEnabled === true) {
+                        createControls();
+                        createWrapper();
+                        loadTimetable();
 
-                new MutationObserver(() => {
-                    if (!isProcessing) {
-                        setTimeout(() => {
-                            console.log('[FFCS] Page updated');
-                            addClashInfo();
-                        }, 500);
+                        new MutationObserver(() => {
+                            if (!isProcessing) {
+                                setTimeout(() => {
+                                    addClashInfo();
+                                }, 500);
+                            }
+                        }).observe(pageWrapper, { childList: true, subtree: false });
                     }
-                }).observe(pageWrapper, { childList: true, subtree: false });
+                });
             }
         }, 500);
 
         setTimeout(() => clearInterval(check), 15000);
     }
+
+    // Listen for toggle messages from sidebar
+    chrome.runtime?.onMessage.addListener((req) => {
+        if (req.type === 'MULTI_WRAPPER_TOGGLE') {
+            if (req.enabled) {
+                // Enable: initialize if not already done
+                if (!document.getElementById('ffcs-controls')) {
+                    init();
+                }
+            } else {
+                // Disable: remove controls and wrapper
+                const controls = document.getElementById('ffcs-controls');
+                const wrapper = document.getElementById('page-wrapper-timetable');
+                if (controls) controls.remove();
+                if (wrapper) wrapper.remove();
+            }
+        }
+    });
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
